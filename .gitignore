@@ -1,0 +1,40 @@
+# === Node.js ===
+node_modules/
+dist/
+.next/
+out/
+frontend/public/workbox-*
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.egg-info/
+
+# === Environment ===
+.env
+.env.local
+.env.*.local
+
+# === Logs ===
+logs/
+*.log
+npm-debug.log*
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === Build ===
+build/
+coverage/
+.nyc_output/

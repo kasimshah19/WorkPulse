@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: 'Inter', sans-serif;
+  --font-noto-devanagari: 'Noto Sans Devanagari', sans-serif;
+}
+
+body {
+  font-family: var(--font-inter), var(--font-noto-devanagari), system-ui, -apple-system, sans-serif;
+  background-color: #0f172a;
+  color: #f8fafc;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure large tap targets for mobile usability (min 48px) */
+button, a.btn, input, select {
+  min-height: 48px;
+}
