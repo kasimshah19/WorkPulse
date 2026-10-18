@@ -1,21 +1,26 @@
 /**
- * Standardised API response helpers.
+ * Standardised API response helpers conforming to docs/api-contract.md
  */
 
 /**
  * Send a success response.
  * @param {import('express').Response} res
  * @param {number} statusCode
- * @param {string} message
  * @param {*} data
+ * @param {object} [pagination]
  */
-export const sendSuccess = (res, statusCode, message, data = null) => {
-  return res.status(statusCode).json({
+export const sendSuccess = (res, statusCode = 200, data = null, pagination = null) => {
+  const payload = {
     success: true,
-    message,
     data,
-    timestamp: new Date().toISOString(),
-  });
+    error: null,
+  };
+
+  if (pagination) {
+    payload.pagination = pagination;
+  }
+
+  return res.status(statusCode).json(payload);
 };
 
 /**
@@ -24,11 +29,16 @@ export const sendSuccess = (res, statusCode, message, data = null) => {
  * @param {number} statusCode
  * @param {string} message
  * @param {string} [code]
+ * @param {*} [details]
  */
-export const sendError = (res, statusCode, message, code = 'ERROR') => {
+export const sendError = (res, statusCode = 400, message = 'An error occurred', code = 'ERROR', details = null) => {
   return res.status(statusCode).json({
     success: false,
-    error: { code, message },
-    timestamp: new Date().toISOString(),
+    data: null,
+    error: {
+      code,
+      message,
+      ...(details ? { details } : {}),
+    },
   });
 };

@@ -1,7 +1,19 @@
 {
   "app_name": "वर्कपल्स (WorkPulse)",
   "tagline": "दैनिक मजदूरों और ठेकेदारों के लिए सीधा काम, उपस्थिति प्रमाण और सुरक्षित भुगतान।",
-  "worker_cta": "मैं मजदूर / कारीगर हूँ",
-  "contractor_cta": "मैं ठेकेदार हूँ",
-  "quick_stats": "गारंटीड भुगतान • सीधा बैंक/UPI ट्रांसफर • सुरक्षित काम"
+  "worker_cta": "मैं मजदूर / कारीगर हूँ (Worker)",
+  "contractor_cta": "मैं ठेकेदार हूँ (Contractor)",
+  "quick_stats": "गारंटीड भुगतान • सीधा बैंक/UPI ट्रांसफर • सुरक्षित काम",
+  "post_job": "नया काम डालें (Post Job)",
+  "my_jobs": "मेरे काम (My Jobs)",
+  "nearby_jobs": "नजदीकी काम (Nearby Jobs)",
+  "accept": "स्वीकार करें (Accept)",
+  "reject": "अस्वीकार (Reject)",
+  "job_filled": "काम भर चुका है (Job Filled)",
+  "available": "उपलब्ध (Available)",
+  "unavailable": "छुट्टी (Unavailable)",
+  "live_status": "लाइव कनेक्टेड",
+  "offline_status": "ऑफलाइन",
+  "send_otp": "OTP भेजें (Send OTP)",
+  "verify_otp": "पुष्टि करें (Verify OTP)"
 }

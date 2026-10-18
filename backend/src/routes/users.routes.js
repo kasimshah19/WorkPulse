@@ -1,9 +1,40 @@
 import { Router } from 'express';
-import { getMe, updateMe } from '../controllers/users.controller.js';
+import Joi from 'joi';
+import asyncHandler from '../utils/asyncHandler.js';
+import validate from '../middleware/validate.js';
+import auth from '../middleware/auth.js';
+import role from '../middleware/role.js';
+import { SKILLS, LANGUAGE_PREFERENCE } from '../config/constants.js';
+import {
+  updateMe,
+  updateLocation,
+  updateAvailability,
+} from '../controllers/users.controller.js';
 
 const router = Router();
 
-router.get('/me', getMe);
-router.patch('/me', updateMe);
+const updateMeSchema = Joi.object({
+  name: Joi.string().min(2).max(100).optional(),
+  skills: Joi.array().items(Joi.string().valid(...SKILLS)).optional(),
+  languagePreference: Joi.string().valid(...Object.values(LANGUAGE_PREFERENCE)).optional(),
+  experienceYears: Joi.number().min(0).max(50).optional(),
+  address: Joi.string().max(300).optional().allow(''),
+  upiId: Joi.string().max(100).optional().allow(''),
+});
+
+const updateLocationSchema = Joi.object({
+  lat: Joi.number().min(-90).max(90).required(),
+  lng: Joi.number().min(-180).max(180).required(),
+});
+
+const updateAvailabilitySchema = Joi.object({
+  isAvailable: Joi.boolean().required(),
+});
+
+router.use(auth);
+
+router.patch('/me', validate(updateMeSchema), asyncHandler(updateMe));
+router.patch('/me/location', validate(updateLocationSchema), asyncHandler(updateLocation));
+router.patch('/me/availability', role('worker'), validate(updateAvailabilitySchema), asyncHandler(updateAvailability));
 
 export default router;

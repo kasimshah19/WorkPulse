@@ -1,7 +1,19 @@
 {
   "app_name": "WorkPulse",
-  "tagline": "Direct contracting, verified work & secure escrow payments for daily-wage workers.",
+  "tagline": "Direct micro-contracting, proof-of-work & escrow payments for India's daily-wage workforce.",
   "worker_cta": "I am a Worker",
   "contractor_cta": "I am a Contractor",
-  "quick_stats": "Guaranteed daily payouts • Zero commission • Instant dispute resolution"
+  "quick_stats": "Guaranteed Escrow • Instant UPI Transfer • Safe Work",
+  "post_job": "Post Job",
+  "my_jobs": "My Jobs",
+  "nearby_jobs": "Nearby Jobs",
+  "accept": "Accept",
+  "reject": "Reject",
+  "job_filled": "Job Filled",
+  "available": "Available",
+  "unavailable": "Unavailable",
+  "live_status": "Live Connected",
+  "offline_status": "Offline",
+  "send_otp": "Send OTP",
+  "verify_otp": "Verify OTP"
 }

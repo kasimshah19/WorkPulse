@@ -18,12 +18,4 @@ describe('Health Check Endpoint', () => {
     expect(res.body).toHaveProperty('success', false);
     expect(res.body.error).toHaveProperty('code', 'NOT_FOUND');
   });
-
-  it('POST /api/v1/auth/login should return 501 Not Implemented', async () => {
-    const res = await request(app).post('/api/v1/auth/login');
-
-    expect(res.statusCode).toEqual(501);
-    expect(res.body).toHaveProperty('success', false);
-    expect(res.body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
-  });
 });

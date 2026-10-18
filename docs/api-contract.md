@@ -81,7 +81,7 @@ All REST responses strictly follow the standardized envelope:
 #### 1. Send OTP
 - **Method & Path**: `POST /auth/send-otp`
 - **Auth**: Public
-- **Phase**: Phase 3
+- **Phase**: Phase 3 (Implemented)
 - **Request Body**:
   ```json
   {
@@ -106,12 +106,14 @@ All REST responses strictly follow the standardized envelope:
 #### 2. Verify OTP
 - **Method & Path**: `POST /auth/verify-otp`
 - **Auth**: Public
-- **Phase**: Phase 3
+- **Phase**: Phase 3 (Implemented)
 - **Request Body**:
   ```json
   {
     "phone": "+919876543210",
-    "otp": "482910"
+    "otp": "482910",
+    "name": "Ramesh Kumar",
+    "role": "worker"
   }
   ```
 - **Success Response (200 OK)**:
@@ -126,8 +128,8 @@ All REST responses strictly follow the standardized envelope:
         "name": "Ramesh Kumar",
         "isNewUser": false
       },
-      "accessToken": "eyJhbGciOi...",
-      "refreshToken": "d8f1e0a2..."
+      "token": "eyJhbGciOi...",
+      "isNewUser": false
     },
     "error": null
   }
@@ -137,43 +139,17 @@ All REST responses strictly follow the standardized envelope:
 #### 3. Refresh Access Token
 - **Method & Path**: `POST /auth/refresh-token`
 - **Auth**: Public
-- **Phase**: Phase 3
-- **Request Body**:
-  ```json
-  {
-    "refreshToken": "d8f1e0a2..."
-  }
-  ```
-- **Success Response (200 OK)**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "accessToken": "eyJhbGciOi..."
-    },
-    "error": null
-  }
-  ```
-- **Errors**: `401 UNAUTHORIZED`
+- **Phase**: Phase 5
 
 #### 4. Logout
 - **Method & Path**: `POST /auth/logout`
 - **Auth**: Authenticated (Any role)
-- **Phase**: Phase 3
-- **Request Body**: `{}`
-- **Success Response (200 OK)**:
-  ```json
-  {
-    "success": true,
-    "data": { "message": "Successfully logged out" },
-    "error": null
-  }
-  ```
+- **Phase**: Phase 5
 
 #### 5. Get Current User (`me`)
 - **Method & Path**: `GET /auth/me`
 - **Auth**: Authenticated
-- **Phase**: Phase 3
+- **Phase**: Phase 3 (Implemented)
 - **Success Response (200 OK)**:
   ```json
   {
@@ -184,70 +160,54 @@ All REST responses strictly follow the standardized envelope:
       "role": "worker",
       "name": "Ramesh Kumar",
       "languagePreference": "hi",
-      "isAvailable": true,
-      "kycStatus": "simulated_verified"
+      "isAvailable": true
     },
     "error": null
   }
   ```
 
+#### 6. Dev Login & Dev Users (Dev Mode Only)
+- **Method & Path**: `POST /auth/dev-login` & `GET /auth/dev-users`
+- **Auth**: Public (Mounted only when `OTP_DEV_MODE=true` and `NODE_ENV!=production`)
+- **Phase**: Phase 3 (Implemented)
+
 ---
 
 ### 2.2 Users & Profile (`/users`)
 
-#### 1. Get Profile
-- **Method & Path**: `GET /users/profile`
+#### 1. Update Profile
+- **Method & Path**: `PATCH /users/me`
 - **Auth**: Authenticated
-- **Phase**: Phase 3
-- **Success Response (200 OK)**: Full user document with `ratingSummary` and `wallet` ref.
-
-#### 2. Update Profile
-- **Method & Path**: `PATCH /users/profile`
-- **Auth**: Authenticated
-- **Phase**: Phase 3
+- **Phase**: Phase 3 (Implemented)
 - **Request Body**:
   ```json
   {
     "name": "Ramesh Babu Kumar",
-    "languagePreference": "mr",
-    "skills": ["masonry", "plumbing"],
+    "languagePreference": "hi",
+    "skills": ["painter"],
     "experienceYears": 6,
-    "upiId": "ramesh@oksbi"
-  }
-  ```
-
-#### 3. Update Location
-- **Method & Path**: `POST /users/location`
-- **Auth**: Authenticated
-- **Phase**: Phase 3
-- **Request Body**:
-  ```json
-  {
-    "longitude": 73.8567,
-    "latitude": 18.5204,
     "address": "Shivajinagar, Pune, Maharashtra"
   }
   ```
 
-#### 4. Set Worker Availability
-- **Method & Path**: `PATCH /users/availability`
-- **Auth**: Worker
-- **Phase**: Phase 3
-- **Request Body**: `{ "isAvailable": true }`
-
-#### 5. Upload Profile Photo
-- **Method & Path**: `POST /users/profile-photo`
+#### 2. Update Location
+- **Method & Path**: `PATCH /users/me/location`
 - **Auth**: Authenticated
-- **Phase**: Phase 3
-- **Body**: `multipart/form-data` (file: jpeg/png, max 5MB)
-- **Success Response**: `{ "profilePhotoUrl": "https://cdn.workpulse.in/photos/u101.jpg" }`
+- **Phase**: Phase 3 (Implemented)
+- **Request Body**:
+  ```json
+  {
+    "lat": 18.5204,
+    "lng": 73.8567
+  }
+  ```
+- **Note**: Coordinates stored in MongoDB GeoJSON format as `[lng, lat]`.
 
-#### 6. Contractor: List Nearby Workers
-- **Method & Path**: `GET /users/nearby-workers`
-- **Auth**: Contractor
-- **Phase**: Phase 3
-- **Query Params**: `longitude`, `latitude`, `skill`, `radiusKm` (default 5)
-- **Success Response**: Paginated array of available verified workers.
+#### 3. Set Worker Availability
+- **Method & Path**: `PATCH /users/me/availability`
+- **Auth**: Worker
+- **Phase**: Phase 3 (Implemented)
+- **Request Body**: `{ "isAvailable": true }`
 
 ---
 
@@ -256,7 +216,7 @@ All REST responses strictly follow the standardized envelope:
 #### 1. Voice Onboard Proxy
 - **Method & Path**: `POST /voice/onboard`
 - **Auth**: Public or Worker
-- **Phase**: Phase 4
+- **Phase**: Phase 6
 - **Body**: `multipart/form-data` (audio file: wav/webm/mp3)
 - **Success Response (200 OK)**:
   ```json
@@ -279,87 +239,96 @@ All REST responses strictly follow the standardized envelope:
 #### 2. Get Voice Skills Taxonomy
 - **Method & Path**: `GET /voice/skills`
 - **Auth**: Public
-- **Phase**: Phase 4
+- **Phase**: Phase 6
 - **Success Response**: Returns canonical skill names and localized Hindi/Marathi audio prompts.
 
 ---
 
 ### 2.4 Jobs Management (`/jobs`)
 
-#### 1. Create Job (Draft / Direct)
+#### 1. Create Job (Draft)
 - **Method & Path**: `POST /jobs`
 - **Auth**: Contractor
-- **Phase**: Phase 4
+- **Phase**: Phase 3 (Implemented)
 - **Request Body**:
   ```json
   {
-    "title": "Bricklaying for Commercial Boundary Wall",
-    "description": "5000 bricks to lay, mortar provided on site",
-    "skillRequired": "masonry",
-    "workersNeeded": 3,
-    "wagePerDayPaise": 85000,
+    "title": "Wall Painting for Residential Villa",
+    "description": "2 BHK painting work",
+    "skillRequired": "painter",
+    "workersNeeded": 2,
+    "wagePerDayPaise": 70000,
     "startDate": "2026-10-20T03:30:00.000Z",
     "endDate": "2026-10-22T12:30:00.000Z",
-    "totalDays": 3,
     "workingHours": { "start": "09:00", "end": "18:00" },
-    "longitude": 73.8567,
-    "latitude": 18.5204,
+    "location": { "lat": 18.5204, "lng": 73.8567 },
     "addressText": "Plot 42, Hinjawadi Phase 2, Pune",
     "geofenceRadiusMeters": 100,
     "matchRadiusKm": 5,
     "requiresSelfie": true
   }
   ```
-- **Success Response (201 Created)**: Returns created Job with status `DRAFT` or `OPEN`.
+- **Success Response (201 Created)**: Returns created Job with status `DRAFT`.
 
-#### 2. Publish Job (Triggers Geo-matching Broadcast)
+#### 2. Update Job
+- **Method & Path**: `PATCH /jobs/:id`
+- **Auth**: Contractor (Owner only, allowed when DRAFT or OPEN with 0 assigned)
+- **Phase**: Phase 3 (Implemented)
+
+#### 3. Publish Job (Triggers Geo-matching Broadcast)
 - **Method & Path**: `POST /jobs/:id/publish`
+- **Auth**: Contractor (Owner only)
+- **Phase**: Phase 3 (Implemented)
+- **Success Response**: Returns `{ "job": { ... }, "matching": { "notified": 4, "viaSocket": 2, "viaSms": 2 } }`. Idempotent.
+
+#### 4. Contractor: My Jobs
+- **Method & Path**: `GET /jobs/my`
 - **Auth**: Contractor
-- **Phase**: Phase 4
-- **Success Response**: Returns `{ "status": "OPEN", "notifiedWorkersCount": 14 }`.
+- **Query Params**: `status`, `page`, `limit`
+- **Phase**: Phase 3 (Implemented)
+- **Success Response**: Paginated array with counts (`notified`, `accepted`, `rejected`).
 
-#### 3. List Jobs
-- **Method & Path**: `GET /jobs`
-- **Auth**: Authenticated
-- **Query Params**: `status`, `skillRequired`, `page`, `limit`
-- **Phase**: Phase 4
-
-#### 4. Nearby Jobs for Worker
+#### 5. Nearby Jobs for Worker
 - **Method & Path**: `GET /jobs/nearby`
 - **Auth**: Worker
-- **Query Params**: `longitude`, `latitude`, `radiusKm`
-- **Phase**: Phase 4
+- **Query Params**: `radiusKm`, `skill`
+- **Phase**: Phase 3 (Implemented)
+- **Success Response**: Aggregation via `$geoNear` returning nearby open matching jobs with `distanceMeters`.
 
-#### 5. Cancel Job
+#### 6. Get Job Details
+- **Method & Path**: `GET /jobs/:id`
+- **Auth**: Authenticated (Owner, assigned worker, or notified worker)
+- **Phase**: Phase 3 (Implemented)
+
+#### 7. Contractor: List Job Applicants
+- **Method & Path**: `GET /jobs/:id/applicants`
+- **Auth**: Contractor (Owner only)
+- **Phase**: Phase 3 (Implemented)
+
+#### 8. Cancel Job
 - **Method & Path**: `POST /jobs/:id/cancel`
-- **Auth**: Contractor
-- **Request Body**: `{ "reason": "Site work delayed by weather" }`
-- **Phase**: Phase 4
+- **Auth**: Contractor (Owner only)
+- **Phase**: Phase 3 (Implemented)
 
 ---
 
-### 2.5 Job Applications & Hiring (`/applications`)
+### 2.5 Job Applications & Hiring (`/jobs` & `/applications`)
 
-#### 1. Worker Accept Match
-- **Method & Path**: `POST /applications/:jobId/accept`
+#### 1. Worker Accept Match (Atomic Assignment)
+- **Method & Path**: `POST /jobs/:id/accept`
 - **Auth**: Worker
-- **Phase**: Phase 4
-- **Success Response**: Updates `jobapplications` to `ACCEPTED`, notifies contractor via socket.
+- **Phase**: Phase 3 (Implemented)
+- **Concurrency**: Guaranteed safe using atomic `$inc: { workersAssignedCount: 1 }` with `$lt: workersNeeded`. Returns `409 JOB_FILLED` if already full. Idempotent.
 
 #### 2. Worker Reject Match
-- **Method & Path**: `POST /applications/:jobId/reject`
+- **Method & Path**: `POST /jobs/:id/reject`
 - **Auth**: Worker
-- **Phase**: Phase 4
+- **Phase**: Phase 3 (Implemented)
 
-#### 3. Contractor Assigns Worker
-- **Method & Path**: `POST /applications/:jobId/assign`
-- **Auth**: Contractor
-- **Phase**: Phase 4
-- **Request Body**: `{ "workerId": "652a101bcf12" }`
-- **Success Response**:
-  - Sets application to `ASSIGNED`.
-  - Increments `workersAssignedCount`.
-  - Initializes `escrowtransactions` records for the scheduled days in status `CREATED`.
+#### 3. Worker My Applications
+- **Method & Path**: `GET /applications/my`
+- **Auth**: Worker
+- **Phase**: Phase 3 (Implemented)
 
 ---
 
@@ -573,11 +542,13 @@ All REST responses strictly follow the standardized envelope:
 #### 1. List Notifications
 - **Method & Path**: `GET /notifications`
 - **Auth**: Authenticated
+- **Phase**: Phase 3 (Implemented)
 - **Success Response**: Paginated notification array.
 
 #### 2. Mark Notification Read
 - **Method & Path**: `PATCH /notifications/:id/read`
 - **Auth**: Authenticated
+- **Phase**: Phase 3 (Implemented)
 
 ---
 
@@ -594,12 +565,13 @@ All REST responses strictly follow the standardized envelope:
 
 ### 3.1 Room Architecture Strategy
 
-| Room Pattern | Description | Who Joins |
-| :--- | :--- | :--- |
-| `user:{userId}` | Private user room for personalized alerts | Connected User |
-| `job:{jobId}` | Active job channel for shift updates | Contractor & Assigned Workers |
-| `geo:{h3OrTileId}` | Geographic dispatch channel | Workers available in that grid tile |
-| `admin:disputes` | Real-time incident & dispute triage | Platform Admins |
+| Room Pattern | Description | Who Joins | Phase |
+| :--- | :--- | :--- | :--- |
+| `user:{userId}` | Private user room for personalized alerts and job matches | Connected User | Phase 3 (Implemented) |
+| `role:{role}` | Role channel (worker/contractor) | Connected User by Role | Phase 3 (Implemented) |
+| `job:{jobId}` | Active job channel for shift updates | Contractor & Assigned Workers | Phase 4 |
+| `geo:{h3OrTileId}` | Geographic dispatch channel | Workers available in that grid tile | Phase 4 |
+| `admin:disputes` | Real-time incident & dispute triage | Platform Admins | Phase 6 |
 
 ---
 
@@ -608,10 +580,10 @@ All REST responses strictly follow the standardized envelope:
 #### Client to Server (`client -> server`)
 
 ```typescript
-// Join user room on authenticated handshake
-socket.emit("user:join", { token: "<jwt>" });
+// 1. Acknowledge receipt of new job alert (cancels SMS fallback timer) - Phase 3 (Implemented)
+socket.emit("job:received", { jobId: "652a9010ab34" });
 
-// Worker live GPS heartbeat while on active shift
+// 2. Worker live GPS heartbeat while on active shift - Phase 4
 socket.emit("worker:location_update", {
   jobId: "652a9010ab34",
   longitude: 73.8567,
@@ -619,30 +591,50 @@ socket.emit("worker:location_update", {
   accuracy: 8.2
 });
 
-// Acknowledge incident / SOS broadcast
+// 3. Acknowledge incident / SOS broadcast - Phase 7
 socket.emit("sos:ack", { incidentId: "652c7890aa" });
 ```
 
 #### Server to Client (`server -> client`)
 
 ```typescript
-// 1. New Job Match Broadcast
+// 1. New Job Match Broadcast (to room user:<id>) - Phase 3 (Implemented)
 socket.on("job:new", {
   jobId: "652a9010ab34",
-  title: "Masonry Work",
-  wagePerDayPaise: 85000,
+  title: "Wall Painting for Residential Villa",
+  skillRequired: "painter",
+  wagePerDayPaise: 70000,
   distanceMeters: 1400,
-  startDate: "2026-10-20"
+  startDate: "2026-10-20T03:30:00.000Z",
+  endDate: "2026-10-22T12:30:00.000Z",
+  addressText: "Plot 42, Hinjawadi Phase 2, Pune"
 });
 
-// 2. Worker Accepted Notification to Contractor
-socket.on("job:accepted", {
+// 2. Worker Assigned Alert (to accepted worker) - Phase 3 (Implemented)
+socket.on("job:assigned", { jobId: "652a9010ab34" });
+
+// 3. Job Filled Alert (to expired/unassigned applicants) - Phase 3 (Implemented)
+socket.on("job:filled", { jobId: "652a9010ab34" });
+
+// 4. Job Cancelled Alert (to notified/assigned workers) - Phase 3 (Implemented)
+socket.on("job:cancelled", { jobId: "652a9010ab34" });
+
+// 5. Applicant Accepted (to contractor room) - Phase 3 (Implemented)
+socket.on("applicant:accepted", {
   jobId: "652a9010ab34",
   workerId: "652a101bcf12",
-  workerName: "Ramesh Kumar"
+  workerName: "Ramesh Kumar",
+  assignedCount: 1,
+  workersNeeded: 2
 });
 
-// 3. Worker Checked In Alert
+// 6. Applicant Rejected Count Update (to contractor room) - Phase 3 (Implemented)
+socket.on("applicant:rejected", {
+  jobId: "652a9010ab34",
+  rejectedCount: 1
+});
+
+// 7. Worker Checked In Alert - Phase 4
 socket.on("attendance:checkedIn", {
   jobId: "652a9010ab34",
   workerName: "Ramesh Kumar",
@@ -650,7 +642,7 @@ socket.on("attendance:checkedIn", {
   distanceMeters: 24
 });
 
-// 4. Shift Sign-Off Requested (to Contractor)
+// 8. Shift Sign-Off Requested (to Contractor) - Phase 4
 socket.on("signoff:requested", {
   jobId: "652a9010ab34",
   workerId: "652a101bcf12",
@@ -658,7 +650,7 @@ socket.on("signoff:requested", {
   autoApprovalAt: "2026-10-21T06:00:00Z"
 });
 
-// 5. Escrow Released Notification (to Worker)
+// 9. Escrow Released Notification (to Worker) - Phase 5
 socket.on("payment:released", {
   jobId: "652a9010ab34",
   amountPaise: 85000,
@@ -666,7 +658,7 @@ socket.on("payment:released", {
   releasedAt: "2026-10-20T18:30:00Z"
 });
 
-// 6. Emergency SOS Broadcast
+// 10. Emergency SOS Broadcast - Phase 7
 socket.on("sos:alert", {
   incidentId: "652c7890aa",
   jobId: "652a9010ab34",

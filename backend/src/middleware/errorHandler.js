@@ -6,19 +6,24 @@ import logger from '../utils/logger.js';
  */
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, _next) => {
-  logger.error(`${err.name}: ${err.message}`);
+  logger.error(`${err.name || 'Error'}: ${err.message}`);
 
-  const statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || (err.status && typeof err.status === 'number' ? err.status : 500);
   const message =
-    process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+    process.env.NODE_ENV === 'production' && statusCode === 500
+      ? 'Internal server error'
+      : err.message || 'Internal server error';
+
+  const code = err.code || (statusCode === 404 ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR');
 
   res.status(statusCode).json({
     success: false,
+    data: null,
     error: {
-      code: err.code || 'INTERNAL_ERROR',
+      code,
       message,
+      ...(err.details ? { details: err.details } : {}),
     },
-    timestamp: new Date().toISOString(),
   });
 };
 

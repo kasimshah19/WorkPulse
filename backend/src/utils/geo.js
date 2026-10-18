@@ -28,6 +28,43 @@ export const haversineDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 /**
+ * Calculate a destination point given distance (km) and bearing (degrees).
+ *
+ * @param {number} lat - Latitude in degrees
+ * @param {number} lon - Longitude in degrees
+ * @param {number} distanceKm - Distance in kilometres
+ * @param {number} bearingDeg - Bearing in degrees (0 = North, 90 = East, 180 = South, 270 = West)
+ * @returns {{ latitude: number, longitude: number }}
+ */
+export const destinationPoint = (lat, lon, distanceKm, bearingDeg) => {
+  const R = 6371; // Earth radius in km
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const toDeg = (rad) => (rad * 180) / Math.PI;
+
+  const delta = distanceKm / R;
+  const theta = toRad(bearingDeg);
+  const phi1 = toRad(lat);
+  const lambda1 = toRad(lon);
+
+  const phi2 = Math.asin(
+    Math.sin(phi1) * Math.cos(delta) +
+    Math.cos(phi1) * Math.sin(delta) * Math.cos(theta)
+  );
+
+  const lambda2 =
+    lambda1 +
+    Math.atan2(
+      Math.sin(theta) * Math.sin(delta) * Math.cos(phi1),
+      Math.cos(delta) - Math.sin(phi1) * Math.sin(phi2)
+    );
+
+  return {
+    latitude: parseFloat(toDeg(phi2).toFixed(6)),
+    longitude: parseFloat(toDeg(lambda2).toFixed(6)),
+  };
+};
+
+/**
  * Create a GeoJSON Point object.
  *
  * @param {number} longitude

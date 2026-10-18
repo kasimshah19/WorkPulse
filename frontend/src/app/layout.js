@@ -1,5 +1,6 @@
 import '../styles/globals.css';
 import { Inter, Noto_Sans_Devanagari } from 'next/font/google';
+import { AppWrapper } from '../components/layout/AppWrapper';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,7 +23,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#ea580c',
+  themeColor: '#1e3a8a',
 };
 
 export default function RootLayout({ children }) {
@@ -38,7 +39,7 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
       </head>
       <body className="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col">
-        {children}
+        <AppWrapper>{children}</AppWrapper>
       </body>
     </html>
   );
