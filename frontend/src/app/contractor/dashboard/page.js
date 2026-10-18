@@ -25,7 +25,15 @@ export default function ContractorDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (user && user.role !== 'contractor') {
+      window.location.href = '/worker/dashboard';
+      return;
+    }
+  }, [user]);
+
   const fetchMyJobs = useCallback(async () => {
+    if (user && user.role !== 'contractor') return;
     setLoading(true);
     setError('');
     try {
@@ -36,11 +44,13 @@ export default function ContractorDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    fetchMyJobs();
-  }, [fetchMyJobs]);
+    if (user && user.role === 'contractor') {
+      fetchMyJobs();
+    }
+  }, [fetchMyJobs, user]);
 
   // Live Socket updates for applicant responses
   useEffect(() => {

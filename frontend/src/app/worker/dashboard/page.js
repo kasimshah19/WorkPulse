@@ -28,7 +28,15 @@ export default function WorkerDashboardPage() {
   const [error, setError] = useState('');
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable ?? true);
 
+  useEffect(() => {
+    if (user && user.role !== 'worker') {
+      window.location.href = '/contractor/dashboard';
+      return;
+    }
+  }, [user]);
+
   const fetchNearbyJobs = useCallback(async () => {
+    if (user && user.role !== 'worker') return;
     setLoading(true);
     setError('');
     try {
@@ -43,11 +51,13 @@ export default function WorkerDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    fetchNearbyJobs();
-  }, [fetchNearbyJobs]);
+    if (user && user.role === 'worker') {
+      fetchNearbyJobs();
+    }
+  }, [fetchNearbyJobs, user]);
 
   // Listen to real-time `job:new` event on active socket
   useEffect(() => {
