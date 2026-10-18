@@ -22,6 +22,7 @@ export default function ContractorDashboardPage() {
   const { user, token } = useAuthStore();
 
   const [jobs, setJobs] = useState([]);
+  const [attendanceCounts, setAttendanceCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -32,19 +33,48 @@ export default function ContractorDashboardPage() {
     }
   }, [user]);
 
+  const fetchAttendanceSummaries = useCallback(async (jobList) => {
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+
+    const activeJobs = jobList.filter((j) => ['FILLED', 'IN_PROGRESS'].includes(j.status));
+    const counts = {};
+
+    await Promise.all(
+      activeJobs.map(async (j) => {
+        try {
+          const res = await api.get(`/jobs/${j._id}/attendance?date=${today}`);
+          const list = res.data || [];
+          const checkedIn = list.filter((r) => r.attendance && ['CHECKED_IN', 'CHECKED_OUT'].includes(r.attendance.status)).length;
+          counts[j._id] = { checkedIn, total: list.length || j.workersAssignedCount || 0 };
+        } catch {
+          // ignore error
+        }
+      })
+    );
+
+    setAttendanceCounts(counts);
+  }, []);
+
   const fetchMyJobs = useCallback(async () => {
     if (user && user.role !== 'contractor') return;
     setLoading(true);
     setError('');
     try {
       const res = await api.get('/jobs/my');
-      setJobs(res.data || []);
+      const jobList = res.data || [];
+      setJobs(jobList);
+      fetchAttendanceSummaries(jobList);
     } catch (err) {
       setError(err.message || 'काम लोड करने में समस्या हुई।');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, fetchAttendanceSummaries]);
 
   useEffect(() => {
     if (user && user.role === 'contractor') {
@@ -52,13 +82,12 @@ export default function ContractorDashboardPage() {
     }
   }, [fetchMyJobs, user]);
 
-  // Live Socket updates for applicant responses
+  // Live Socket updates for applicant responses and attendance check-in
   useEffect(() => {
     if (!token) return;
     const socket = getSocket(token);
 
     const handleApplicantAccepted = (payload) => {
-      // payload: { jobId, workerId, workerName, assignedCount, workersNeeded }
       setJobs((prevJobs) =>
         prevJobs.map((j) => {
           if (j._id === payload.jobId) {
@@ -77,29 +106,27 @@ export default function ContractorDashboardPage() {
       );
     };
 
-    const handleApplicantRejected = (payload) => {
-      setJobs((prevJobs) =>
-        prevJobs.map((j) => {
-          if (j._id === payload.jobId) {
-            return {
-              ...j,
-              applicantCounts: {
-                ...j.applicantCounts,
-                rejected: payload.rejectedCount,
-              },
-            };
-          }
-          return j;
-        })
-      );
+    const handleAttendanceCheckedIn = (payload) => {
+      if (payload.jobId) {
+        setAttendanceCounts((prev) => {
+          const existing = prev[payload.jobId] || { checkedIn: 0, total: 1 };
+          return {
+            ...prev,
+            [payload.jobId]: {
+              ...existing,
+              checkedIn: existing.checkedIn + 1,
+            },
+          };
+        });
+      }
     };
 
     socket.on('applicant:accepted', handleApplicantAccepted);
-    socket.on('applicant:rejected', handleApplicantRejected);
+    socket.on('attendance:checkedIn', handleAttendanceCheckedIn);
 
     return () => {
       socket.off('applicant:accepted', handleApplicantAccepted);
-      socket.off('applicant:rejected', handleApplicantRejected);
+      socket.off('attendance:checkedIn', handleAttendanceCheckedIn);
     };
   }, [token]);
 
@@ -207,6 +234,12 @@ export default function ContractorDashboardPage() {
                     <span className="text-[10px] font-bold text-slate-400 uppercase">
                       {job.skillRequired}
                     </span>
+
+                    {attendanceCounts[job._id] && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        आज: {attendanceCounts[job._id].checkedIn}/{attendanceCounts[job._id].total} आ चुके हैं
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="text-base font-bold text-white mt-1.5">

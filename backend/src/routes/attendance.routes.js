@@ -1,10 +1,42 @@
 import { Router } from 'express';
-import { checkIn, checkOut, getAttendanceByJob } from '../controllers/attendance.controller.js';
+import {
+  handleCheckIn,
+  handleCheckOut,
+  handleSignoff,
+  getTodayAttendance,
+  getMyAttendanceHistory,
+  getJobAttendance,
+  getAttendanceById,
+  getAttendanceSelfie,
+  getAttendanceCode,
+} from '../controllers/attendance.controller.js';
+import { authenticate } from '../middleware/auth.js';
+import { role } from '../middleware/role.js';
+import { upload } from '../services/storage.service.js';
 
 const router = Router();
 
-router.post('/check-in', checkIn);
-router.post('/check-out', checkOut);
-router.get('/job/:jobId', getAttendanceByJob);
+// Middleware: All attendance endpoints require authenticated JWT
+router.use(authenticate);
+
+// --- Worker Endpoints ---
+router.get('/today', role('worker'), getTodayAttendance);
+router.get('/history', role('worker'), getMyAttendanceHistory);
+
+// Single Attendance Detail & Secure Selfie Serving
+router.get('/:id/selfie', getAttendanceSelfie);
+router.get('/:id', getAttendanceById);
+
+// Contractor Sign-off Decision
+router.post('/:id/signoff', role('contractor', 'admin'), handleSignoff);
 
 export default router;
+
+// Sub-router for job-specific attendance routes mounted under /jobs/:id/attendance
+export const jobAttendanceRouter = Router({ mergeParams: true });
+jobAttendanceRouter.use(authenticate);
+
+jobAttendanceRouter.post('/check-in', role('worker'), upload.single('selfie'), handleCheckIn);
+jobAttendanceRouter.post('/check-out', role('worker'), upload.single('selfie'), handleCheckOut);
+jobAttendanceRouter.get('/', role('contractor', 'admin'), getJobAttendance);
+jobAttendanceRouter.get('/code', role('contractor', 'admin'), getAttendanceCode);

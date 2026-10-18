@@ -35,9 +35,6 @@ export const cancelFallbackTimer = (jobId, workerId) => {
  * Get active Socket.io singleton instance.
  */
 export const getIO = () => {
-  if (!ioInstance) {
-    throw new Error('Socket.io has not been initialized yet.');
-  }
   return ioInstance;
 };
 

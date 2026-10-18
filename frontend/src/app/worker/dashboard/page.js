@@ -13,6 +13,11 @@ import {
   SlidersHorizontal,
   CheckCircle2,
   AlertCircle,
+  LogIn,
+  LogOut,
+  History,
+  ShieldCheck,
+  XCircle,
 } from 'lucide-react';
 import api from '../../../lib/api';
 import { useAuthStore } from '../../../store/authStore';
@@ -23,6 +28,7 @@ export default function WorkerDashboardPage() {
   const { user, updateUser, token } = useAuthStore();
   const { isConnected } = useSocketStore();
 
+  const [todayCards, setTodayCards] = useState([]);
   const [nearbyJobs, setNearbyJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -34,6 +40,17 @@ export default function WorkerDashboardPage() {
       return;
     }
   }, [user]);
+
+  // Fetch today's assigned jobs and attendance status
+  const fetchTodayWork = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await api.get('/attendance/today');
+      setTodayCards(res.data || []);
+    } catch (err) {
+      console.warn('Failed to load today attendance:', err);
+    }
+  }, [token]);
 
   const fetchNearbyJobs = useCallback(async () => {
     if (user && user.role !== 'worker') return;
@@ -56,16 +73,16 @@ export default function WorkerDashboardPage() {
   useEffect(() => {
     if (user && user.role === 'worker') {
       fetchNearbyJobs();
+      fetchTodayWork();
     }
-  }, [fetchNearbyJobs, user]);
+  }, [fetchNearbyJobs, fetchTodayWork, user]);
 
-  // Listen to real-time `job:new` event on active socket
+  // Sockets for real-time jobs and attendance/sign-off status
   useEffect(() => {
     if (!token) return;
     const socket = getSocket(token);
 
     const handleNewJob = (newJobData) => {
-      // Prepend to nearby jobs list dynamically!
       setNearbyJobs((prev) => {
         const exists = prev.some((j) => j._id === newJobData.jobId);
         if (exists) return prev;
@@ -86,11 +103,26 @@ export default function WorkerDashboardPage() {
       });
     };
 
+    const handleSignoffDone = () => {
+      fetchTodayWork();
+    };
+
+    const handleAttendanceChange = () => {
+      fetchTodayWork();
+    };
+
     socket.on('job:new', handleNewJob);
+    socket.on('signoff:done', handleSignoffDone);
+    socket.on('attendance:checkedIn', handleAttendanceChange);
+    socket.on('attendance:checkedOut', handleAttendanceChange);
+
     return () => {
       socket.off('job:new', handleNewJob);
+      socket.off('signoff:done', handleSignoffDone);
+      socket.off('attendance:checkedIn', handleAttendanceChange);
+      socket.off('attendance:checkedOut', handleAttendanceChange);
     };
-  }, [token]);
+  }, [token, fetchTodayWork]);
 
   const handleToggleAvailability = async () => {
     const nextState = !isAvailable;
@@ -105,7 +137,7 @@ export default function WorkerDashboardPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-4 pb-20">
+    <div className="max-w-md mx-auto p-4 space-y-4 pb-24">
       {/* Header Profile Summary & Availability Toggle */}
       <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between shadow-lg">
         <div>
@@ -146,16 +178,143 @@ export default function WorkerDashboardPage() {
           className="p-3 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center gap-2 text-blue-400 font-bold text-xs"
         >
           <Briefcase className="w-4 h-4 text-blue-500" />
-          मेरे स्वीकृत काम (My Jobs)
+          मेरे काम (My Jobs)
         </Link>
         <Link
-          href="/worker/profile-setup"
-          className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-2 text-slate-300 font-bold text-xs"
+          href="/worker/attendance"
+          className="p-3 bg-emerald-600/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-emerald-400 font-bold text-xs"
         >
-          <MapPin className="w-4 h-4 text-emerald-500" />
-          लोकेशन / हुनर बदलें
+          <History className="w-4 h-4 text-emerald-500" />
+          हाज़िरी इतिहास (History)
         </Link>
       </div>
+
+      {/* Prominent "आज का काम" (Today's Assigned Work) Card */}
+      {todayCards.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-white flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-400" />
+              आज का काम (Today's Work)
+            </h3>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+              {todayCards.length} काम
+            </span>
+          </div>
+
+          {todayCards.map((card) => {
+            const { job, attendanceState, attendance } = card;
+            const wage = Math.round((job.wagePerDayPaise || 0) / 100);
+
+            return (
+              <div
+                key={job._id}
+                className="p-4 bg-gradient-to-br from-slate-900 to-slate-850 border-2 border-emerald-500/40 rounded-2xl shadow-xl space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                      {job.skillRequired}
+                    </span>
+                    <h4 className="text-base font-bold text-white mt-1">
+                      {job.title}
+                    </h4>
+                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      {job.addressText || 'कार्यस्थल (Site Location)'}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-sm font-black text-emerald-400 flex items-center justify-end">
+                      <IndianRupee className="w-3.5 h-3.5" />
+                      <span>{wage}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">/दिन</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-1 justify-end">
+                      <Clock className="w-3 h-3" />
+                      {job.workingHours?.start} - {job.workingHours?.end}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Large Status Chip */}
+                <div className="pt-1">
+                  {attendanceState === 'NOT_STARTED' && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>शुरू नहीं हुआ (Not Started)</span>
+                      </div>
+                      <Link
+                        href={`/worker/jobs/${job._id}/check-in`}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition"
+                      >
+                        <LogIn className="w-3.5 h-3.5" />
+                        चेक-इन करें (Check-in)
+                      </Link>
+                    </div>
+                  )}
+
+                  {attendanceState === 'CHECKED_IN' && (
+                    <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>साइट पर काम चालू (Checked-In)</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 ml-6">
+                          चेक-इन: {attendance?.checkInAt ? new Date(attendance.checkInAt).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                      <Link
+                        href={`/worker/jobs/${job._id}/check-out`}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md active:scale-95 transition"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        चेक-आउट करें (Check-out)
+                      </Link>
+                    </div>
+                  )}
+
+                  {attendanceState === 'CHECKED_OUT' && (
+                    <div className="p-3 bg-slate-800/80 border border-slate-700 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          काम समाप्त (Checked Out: {attendance?.hoursWorked || 0} घंटे)
+                        </span>
+                        <span
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            attendance?.contractorSignoff?.status === 'APPROVED'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : attendance?.contractorSignoff?.status === 'DISPUTED'
+                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          }`}
+                        >
+                          {attendance?.contractorSignoff?.status === 'APPROVED'
+                            ? '✅ मंज़ूर (Approved)'
+                            : attendance?.contractorSignoff?.status === 'DISPUTED'
+                            ? '⚠️ विवादित (Disputed)'
+                            : '⏳ साइन-ऑफ़ इंतज़ार (Signoff Pending)'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {attendanceState === 'MISSED' && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-300 text-xs font-bold">
+                      <XCircle className="w-4 h-4 text-rose-400" />
+                      <span>अनुपस्थित (Absent / Missed) - समय समाप्त</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Nearby Jobs Section Header */}
       <div className="flex items-center justify-between pt-2">
@@ -169,7 +328,10 @@ export default function WorkerDashboardPage() {
         </div>
 
         <button
-          onClick={fetchNearbyJobs}
+          onClick={() => {
+            fetchNearbyJobs();
+            fetchTodayWork();
+          }}
           className="p-1.5 text-slate-400 hover:text-white rounded-lg"
           title="Refresh"
         >
@@ -210,7 +372,7 @@ export default function WorkerDashboardPage() {
           </div>
           <div>
             <h4 className="text-sm font-bold text-white">
-              अभी आपके पास कोई काम उपलब्ध नहीं है
+              अभी आपके पास कोई नया काम उपलब्ध नहीं है
             </h4>
             <p className="text-xs text-slate-400 mt-1">
               जैसे ही कोई ठेकेदार नया काम डालेगा, आपको तुरंत सूचना मिलेगी।
@@ -223,9 +385,10 @@ export default function WorkerDashboardPage() {
       <div className="space-y-3">
         {nearbyJobs.map((job) => {
           const wageRupees = Math.round((job.wagePerDayPaise || 0) / 100);
-          const distKm = job.distanceMeters !== undefined
-            ? (job.distanceMeters / 1000).toFixed(1)
-            : '0.0';
+          const distKm =
+            job.distanceMeters !== undefined
+              ? (job.distanceMeters / 1000).toFixed(1)
+              : '0.0';
 
           return (
             <div

@@ -17,6 +17,7 @@ import {
   acceptJob,
   rejectJob,
 } from '../controllers/jobs.controller.js';
+import { jobAttendanceRouter } from './attendance.routes.js';
 
 const router = Router();
 
@@ -79,6 +80,9 @@ router.get('/:id/applicants', role('contractor', 'admin'), asyncHandler(getJobAp
 router.get('/nearby', role('worker'), asyncHandler(getNearbyJobs));
 router.post('/:id/accept', role('worker'), asyncHandler(acceptJob));
 router.post('/:id/reject', role('worker'), asyncHandler(rejectJob));
+
+// Mount job attendance sub-router: /jobs/:id/attendance/*
+router.use('/:id/attendance', jobAttendanceRouter);
 
 // Common job details route
 router.get('/:id', asyncHandler(getJobById));

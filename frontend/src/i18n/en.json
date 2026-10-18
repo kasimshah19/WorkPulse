@@ -15,5 +15,17 @@
   "live_status": "Live Connected",
   "offline_status": "Offline",
   "send_otp": "Send OTP",
-  "verify_otp": "Verify OTP"
+  "verify_otp": "Verify OTP",
+  "today_work": "Today's Work",
+  "check_in": "Check-in",
+  "check_out": "Check-out",
+  "attendance_history": "Attendance History",
+  "selfie_proof": "Selfie Proof",
+  "daily_code": "Daily Code",
+  "geofence_status": "Distance from Site",
+  "signoff_pending": "Sign-off Pending",
+  "signoff_approved": "Approved",
+  "signoff_disputed": "Disputed",
+  "auto_checkout": "Auto Check-out"
 }
+

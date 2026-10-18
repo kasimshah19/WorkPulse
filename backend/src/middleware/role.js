@@ -21,4 +21,5 @@ const role = (...roles) => {
   };
 };
 
+export { role };
 export default role;

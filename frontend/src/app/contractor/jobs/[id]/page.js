@@ -200,6 +200,15 @@ export default function ContractorJobDetailPage() {
             </span>
           </div>
         </div>
+
+        {/* View Attendance & Sign-off Button */}
+        <Link
+          href={`/contractor/jobs/${jobId}/attendance`}
+          className="w-full min-h-[46px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-xs shadow-md transition-all active:scale-95"
+        >
+          <Clock className="w-4 h-4" />
+          दैनिक हाज़िरी व साइन-ऑफ़ देखें (Daily Attendance & Sign-off)
+        </Link>
       </div>
 
       {/* Live Applicants & Assigned Workers List */}

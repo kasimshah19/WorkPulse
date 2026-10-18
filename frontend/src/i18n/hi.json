@@ -15,5 +15,17 @@
   "live_status": "लाइव कनेक्टेड",
   "offline_status": "ऑफलाइन",
   "send_otp": "OTP भेजें (Send OTP)",
-  "verify_otp": "पुष्टि करें (Verify OTP)"
+  "verify_otp": "पुष्टि करें (Verify OTP)",
+  "today_work": "आज का काम (Today's Work)",
+  "check_in": "चेक-इन करें (Check-in)",
+  "check_out": "चेक-आउट करें (Check-out)",
+  "attendance_history": "हाज़िरी का इतिहास (Attendance History)",
+  "selfie_proof": "सेल्फ़ी प्रमाण (Selfie Proof)",
+  "daily_code": "आज का कोड (Daily Code)",
+  "geofence_status": "साइट से दूरी (Distance from Site)",
+  "signoff_pending": "साइन-ऑफ़ बाकी (Sign-off Pending)",
+  "signoff_approved": "मंज़ूर (Approved)",
+  "signoff_disputed": "विवादित (Disputed)",
+  "auto_checkout": "ऑटो चेक-आउट (Auto Check-out)"
 }
+

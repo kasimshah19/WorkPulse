@@ -29,6 +29,16 @@ const env = {
   seedCenterLat: parseFloat(process.env.SEED_CENTER_LAT) || 18.5204,
   seedCenterLng: parseFloat(process.env.SEED_CENTER_LNG) || 73.8567,
   otpDevMode: process.env.OTP_DEV_MODE === 'true' && process.env.NODE_ENV !== 'production',
+  attendanceRequireFunding: process.env.ATTENDANCE_REQUIRE_FUNDING === 'true',
+  attendanceMaxAccuracyM: parseInt(process.env.ATTENDANCE_MAX_ACCURACY_M, 10) || 50,
+  attendanceMaxClockDriftSec: parseInt(process.env.ATTENDANCE_MAX_CLOCK_DRIFT_SEC, 10) || 120,
+  attendanceEarlyCheckinMin: parseInt(process.env.ATTENDANCE_EARLY_CHECKIN_MIN, 10) || 30,
+  attendanceLateGraceMin: parseInt(process.env.ATTENDANCE_LATE_GRACE_MIN, 10) || 60,
+  attendanceMaxSpeedKmh: parseInt(process.env.ATTENDANCE_MAX_SPEED_KMH, 10) || 150,
+  selfieMaxBytes: parseInt(process.env.SELFIE_MAX_BYTES, 10) || 2097152,
+  uploadDir: process.env.UPLOAD_DIR || './uploads',
+  attendanceSchedulerIntervalSec: parseInt(process.env.ATTENDANCE_SCHEDULER_INTERVAL_SEC, 10) || 60,
+  devAllowLocationOverride: process.env.DEV_ALLOW_LOCATION_OVERRIDE === 'true' && process.env.NODE_ENV !== 'production',
 };
 
 export default env;

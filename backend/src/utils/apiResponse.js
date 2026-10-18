@@ -42,3 +42,25 @@ export const sendError = (res, statusCode = 400, message = 'An error occurred', 
     },
   });
 };
+
+/**
+ * Object-style helper for controllers that construct responses directly
+ */
+export const apiResponse = {
+  success: (data = null, pagination = null) => ({
+    success: true,
+    data,
+    error: null,
+    ...(pagination ? { pagination } : {}),
+  }),
+  error: (code = 'ERROR', message = 'An error occurred', details = null) => ({
+    success: false,
+    data: null,
+    error: {
+      code,
+      message,
+      ...(details ? { details } : {}),
+    },
+  }),
+};
+

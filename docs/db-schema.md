@@ -217,6 +217,7 @@ erDiagram
 | `status` | String | Yes | `DRAFT` | Enum: `DRAFT`, `OPEN`, `FILLED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`, `EXPIRED` |
 | `requiresSelfie` | Boolean | Yes | `true` | Enforces selfie capture at check-in |
 | `autoApprovalHours` | Number | Yes | `12` | Hours after checkout before auto-approval (default: 12h) |
+| `attendanceCodeSecret` | String | No | auto | Secret key used for daily 6-digit HMAC attendance code generation (`select: false`) |
 | `createdVia` | String | Yes | `app` | Enum: `app`, `voice`, `sms` |
 | `createdAt` | Date | Yes | auto | Creation timestamp |
 | `updatedAt` | Date | Yes | auto | Update timestamp |
@@ -305,18 +306,25 @@ erDiagram
 | `checkOutLocation` | GeoJSON Point | No | - | GPS coords at check-out |
 | `checkInDistanceMeters` | Number | No | `null` | Distance from site center (meters) |
 | `checkOutDistanceMeters`| Number | No | `null` | Distance from site center at checkout |
-| `selfieUrl` | String | No | `""` | Cloud URL of live captured selfie photo |
+| `checkInAccuracyM` | Number | No | `null` | GPS horizontal accuracy (meters) at check-in |
+| `checkOutAccuracyM`| Number | No | `null` | GPS horizontal accuracy (meters) at checkout |
+| `clientTimestamp` | Date | No | `null` | Reported client device time (clock-drift verified) |
+| `selfieUrl` | String | No | `""` | Relative path to verified selfie photo under uploads |
+| `selfieCheckoutUrl` | String | No | `""` | Optional relative path to checkout selfie photo |
 | `qrToken` | String | No | `""` | Optional site supervisor QR token |
+| `qrUsed` | Boolean | Yes | `false` | True when 6-digit daily code fallback was verified |
 | `method` | String | Yes | `gps_selfie` | Enum: `gps_selfie`, `gps_qr` |
-| `hoursWorked` | Number | Yes | `0` | Calculated work duration in hours |
+| `autoCheckout` | Boolean | Yes | `false` | True if automatically checked out by scheduler |
+| `flags` | [String] | Yes | `[]` | Warning flags: `LOW_ACCURACY_WARN`, `AUTO_CHECKOUT`, `OUTSIDE_FENCE_AT_CHECKOUT` |
+| `hoursWorked` | Number | Yes | `0` | Calculated work duration in hours (decimal, 2 places) |
 | `status` | String | Yes | `CHECKED_IN` | Enum: `CHECKED_IN`, `CHECKED_OUT`, `MISSED`, `REJECTED` |
-| `rejectionReason` | String | No | `""` | Explanation if check-in rejected |
-| `contractorSignoff` | Object | Yes | `{...}` | Embedded: `{ status: "PENDING", at: null, by: null }` |
-| `deviceInfo` | Object | No | `{...}` | Embedded: `{ platform, batteryLevel, accuracy }` |
+| `rejectionReason` | String | No | `""` | Explanation if check-in rejected or marked `MISSED` |
+| `contractorSignoff` | Object | Yes | `{...}` | Embedded: `{ status: "PENDING", at: null, by: null, reason: "" }` |
+| `deviceInfo` | Object | No | `{...}` | Embedded: `{ platform, batteryLevel, accuracy, userAgent, screen }` |
 | `createdAt` | Date | Yes | auto | Creation timestamp |
 | `updatedAt` | Date | Yes | auto | Update timestamp |
 
-* **Design Rule**: Attendance data is immutable post check-out. Only `contractorSignoff` can be modified.
+* **Design Rule**: Attendance proof data is strictly immutable once status is `CHECKED_OUT`, `MISSED`, or `REJECTED`. Only `contractorSignoff` can be modified. Mongoose pre-save and pre-update guards enforce this.
 * **Indexes**:
   * `{ job: 1, worker: 1, date: 1 }` (Unique)
   * `{ worker: 1, date: 1 }`

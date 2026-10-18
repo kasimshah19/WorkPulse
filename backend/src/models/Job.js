@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import {
   JOB_STATUS,
@@ -118,6 +119,11 @@ const jobSchema = new mongoose.Schema(
       type: String,
       enum: Object.values(JOB_CREATED_VIA),
       default: JOB_CREATED_VIA.APP,
+    },
+    attendanceCodeSecret: {
+      type: String,
+      select: false,
+      default: () => crypto.randomBytes(32).toString('hex'),
     },
   },
   {

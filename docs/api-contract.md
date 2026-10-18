@@ -332,66 +332,166 @@ All REST responses strictly follow the standardized envelope:
 
 ---
 
-### 2.6 Daily Attendance & Proof-of-Work (`/attendance`)
+### 2.6 Daily Attendance & Proof-of-Work (`/attendance`, `/jobs/:id/attendance`)
 
 #### 1. Worker Check-in
-- **Method & Path**: `POST /attendance/check-in`
-- **Auth**: Worker
-- **Phase**: Phase 5
-- **Request Body**:
+- **Method & Path**: `POST /jobs/:id/attendance/check-in`
+- **Auth**: Worker (Assigned to Job)
+- **Phase**: Phase 4 (Implemented)
+- **Content-Type**: `multipart/form-data`
+- **Request Fields**:
+  - `lat`: Number (-90 to 90)
+  - `lng`: Number (-180 to 180)
+  - `accuracy`: Number (meters, must be >= 0)
+  - `clientTimestamp`: ISO Date string
+  - `method`: String enum (`gps_selfie` | `gps_qr`)
+  - `selfie`: Binary image file (Required when `method=gps_selfie` and `job.requiresSelfie=true`, max 2MB, JPEG/PNG magic bytes verified)
+  - `code`: String (6 digits, required when `method=gps_qr`)
+  - `deviceInfo`: JSON string (optional: `{ userAgent, platform, screen }`)
+- **Success Response (201 Created)**:
   ```json
   {
-    "jobId": "652a9010ab34",
-    "longitude": 73.8569,
-    "latitude": 18.5205,
-    "accuracyMeters": 6.5,
-    "clientTimestamp": "2026-10-20T08:58:10.000Z",
-    "selfieUrl": "https://cdn.workpulse.in/attendance/selfie_01.jpg"
+    "success": true,
+    "data": {
+      "attendance": {
+        "_id": "671230000000000000000006",
+        "job": "671230000000000000000004",
+        "worker": "671230000000000000000001",
+        "date": "2026-10-19",
+        "status": "CHECKED_IN",
+        "checkInAt": "2026-10-19T03:32:00.000Z",
+        "checkInDistanceMeters": 24,
+        "checkInAccuracyM": 8,
+        "selfieUrl": "/api/v1/attendance/671230000000000000000006/selfie",
+        "method": "gps_selfie",
+        "flags": [],
+        "hoursWorked": 0
+      }
+    },
+    "error": null
   }
   ```
+- **Error Codes**:
+  - `400 CLOCK_MISMATCH`: Client timestamp differs from server time by >120s
+  - `403 NOT_ASSIGNED`: Worker does not have an `ASSIGNED` application for this job
+  - `409 JOB_NOT_ACTIVE`: Job status is not `FILLED` or `IN_PROGRESS`
+  - `409 OUTSIDE_JOB_DATES`: Today is outside the job's `startDate` and `endDate`
+  - `409 OUTSIDE_WORKING_HOURS`: Current time is before `workingHours.start - 30m` or after `workingHours.end`
+  - `409 ALREADY_CHECKED_IN`: Worker already checked in today (returns existing `attendanceId` in details)
+  - `422 LOW_ACCURACY`: Reported GPS accuracy > 50m
+  - `422 SUSPICIOUS_LOCATION`: Implied speed from previous attendance > 150 km/h (impossible jump)
+  - `422 OUTSIDE_GEOFENCE`: Distance from site exceeds `job.geofenceRadiusMeters` (returns `{ distanceMeters, allowedMeters }`)
+  - `422 INVALID_CODE`: Invalid 6-digit daily code for `gps_qr` method
+  - `422 SELFIE_REQUIRED`: Missing selfie file when required
+  - `400 INVALID_FILE_TYPE`: Uploaded file is not genuine JPEG/PNG magic bytes or > 2MB
+
+#### 2. Worker Check-out
+- **Method & Path**: `POST /jobs/:id/attendance/check-out`
+- **Auth**: Worker (Must be currently `CHECKED_IN`)
+- **Phase**: Phase 4 (Implemented)
+- **Content-Type**: `multipart/form-data`
+- **Request Fields**:
+  - `lat`: Number
+  - `lng`: Number
+  - `accuracy`: Number
+  - `clientTimestamp`: ISO Date string
+  - `selfie`: Binary image file (optional checkout photo)
 - **Success Response (200 OK)**:
   ```json
   {
     "success": true,
     "data": {
-      "attendanceId": "652b0123cc89",
-      "status": "CHECKED_IN",
-      "checkInDistanceMeters": 24,
-      "checkInAt": "2026-10-20T08:58:12.102Z",
-      "escrowStatus": "CHECKED_IN"
+      "attendance": {
+        "_id": "671230000000000000000006",
+        "status": "CHECKED_OUT",
+        "checkOutAt": "2026-10-19T12:35:00.000Z",
+        "checkOutDistanceMeters": 28,
+        "hoursWorked": 9.05,
+        "contractorSignoff": { "status": "PENDING" }
+      }
     },
     "error": null
   }
   ```
-- **Errors**: `400 ESCROW_NOT_FUNDED`, `400 GEOFENCE_EXCEEDED`, `400 SHIFT_NOT_OPEN`
-
-#### 2. Worker Check-out
-- **Method & Path**: `POST /attendance/check-out`
-- **Auth**: Worker
-- **Phase**: Phase 5
-- **Request Body**:
-  ```json
-  {
-    "jobId": "652a9010ab34",
-    "longitude": 73.8568,
-    "latitude": 18.5204,
-    "clientTimestamp": "2026-10-20T18:02:00.000Z"
-  }
-  ```
-- **Success Response**: Sets attendance `CHECKED_OUT`, calculates `hoursWorked: 9.0`, escrow transitions to `CHECKED_OUT`.
+- **Error Codes**:
+  - `409 NOT_CHECKED_IN`: No active `CHECKED_IN` record found for today
+  - `409 ALREADY_CHECKED_OUT`: Already checked out today
 
 #### 3. Contractor Attendance Sign-off
-- **Method & Path**: `POST /attendance/:attendanceId/signoff`
-- **Auth**: Contractor
-- **Phase**: Phase 5
+- **Method & Path**: `POST /attendance/:id/signoff`
+- **Auth**: Contractor (Job owner)
+- **Phase**: Phase 4 (Implemented; escrow release triggers in Phase 5)
 - **Request Body**:
   ```json
   {
-    "status": "APPROVED",
-    "notes": "Good work, site cleared"
+    "decision": "APPROVED"
   }
   ```
-  *(Or `{ "status": "DISPUTED", "notes": "Left site 3 hours early", "rejectionReason": "WORK_QUALITY" }`)*
+  *(Or `{ "decision": "DISPUTED", "reason": "Left 3 hours before shift end" }` with minimum 5 characters reason)*
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "attendance": {
+        "_id": "671230000000000000000006",
+        "status": "CHECKED_OUT",
+        "contractorSignoff": {
+          "status": "APPROVED",
+          "at": "2026-10-19T13:00:00.000Z",
+          "by": "671230000000000000000099"
+        }
+      }
+    },
+    "error": null
+  }
+  ```
+- **Error Codes**:
+  - `403 NOT_AUTHORIZED`: User is not the contractor of this job
+  - `409 SIGNOFF_NOT_PENDING`: Attendance is not in `CHECKED_OUT` state or signoff is already completed
+
+#### 4. Contractor: Get Job Attendance Daily List
+- **Method & Path**: `GET /jobs/:id/attendance?date=YYYY-MM-DD&page=1&limit=50`
+- **Auth**: Job Contractor or Admin
+- **Phase**: Phase 4 (Implemented)
+- **Success Response (200 OK)**:
+  Returns list of attendances including workers assigned who have not yet checked in (`status: "NOT_STARTED"`).
+
+#### 5. Contractor: Get Job Daily Attendance Code
+- **Method & Path**: `GET /jobs/:id/attendance/code`
+- **Auth**: Job Contractor
+- **Phase**: Phase 4 (Implemented)
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "code": "481923",
+      "validForDate": "2026-10-19",
+      "expiresAt": "2026-10-19T23:59:59.999+05:30",
+      "qrPayload": "workpulse:attendance:671230000000000000000004:481923"
+    },
+    "error": null
+  }
+  ```
+
+#### 6. Worker: Get Today's Assigned Jobs & Attendance Status
+- **Method & Path**: `GET /attendance/today`
+- **Auth**: Worker
+- **Phase**: Phase 4 (Implemented)
+- **Success Response (200 OK)**:
+  Returns active jobs for today with worker's current attendance state (`NOT_STARTED` | `CHECKED_IN` | `CHECKED_OUT` | `MISSED`), site coordinates, geofence radius, and working hours.
+
+#### 7. Worker: Attendance History
+- **Method & Path**: `GET /attendance/history?page=1&limit=20`
+- **Auth**: Worker
+- **Phase**: Phase 4 (Implemented)
+
+#### 8. Attendance Detail & Secure Selfie Serving
+- **Method & Path**: `GET /attendance/:id`
+  - **Auth**: Worker owner, Job contractor, Admin
+- **Method & Path**: `GET /attendance/:id/selfie`
+  - **Auth**: Worker owner, Job contractor, Admin (serves raw binary stream with `image/jpeg` or `image/png` and Cache-Control headers; direct static access to disk is prohibited)
 
 ---
 
@@ -634,23 +734,53 @@ socket.on("applicant:rejected", {
   rejectedCount: 1
 });
 
-// 7. Worker Checked In Alert - Phase 4
+// 7. Worker Checked In Alert - Phase 4 (Implemented)
 socket.on("attendance:checkedIn", {
-  jobId: "652a9010ab34",
-  workerName: "Ramesh Kumar",
-  checkInAt: "2026-10-20T08:58:12Z",
-  distanceMeters: 24
-});
-
-// 8. Shift Sign-Off Requested (to Contractor) - Phase 4
-socket.on("signoff:requested", {
+  attendanceId: "671230000000000000000006",
   jobId: "652a9010ab34",
   workerId: "652a101bcf12",
-  hoursWorked: 9.0,
-  autoApprovalAt: "2026-10-21T06:00:00Z"
+  workerName: "Ramesh Kumar",
+  checkInAt: "2026-10-20T08:58:12Z",
+  distanceMeters: 24,
+  method: "gps_selfie",
+  flags: []
 });
 
-// 9. Escrow Released Notification (to Worker) - Phase 5
+// 8. Worker Checked Out Alert - Phase 4 (Implemented)
+socket.on("attendance:checkedOut", {
+  attendanceId: "671230000000000000000006",
+  jobId: "652a9010ab34",
+  workerId: "652a101bcf12",
+  workerName: "Ramesh Kumar",
+  checkOutAt: "2026-10-20T17:58:12Z",
+  hoursWorked: 9.0,
+  autoCheckout: false
+});
+
+// 9. Shift Sign-Off Requested (to Contractor) - Phase 4 (Implemented)
+socket.on("signoff:requested", {
+  attendanceId: "671230000000000000000006",
+  jobId: "652a9010ab34",
+  workerName: "Ramesh Kumar",
+  hoursWorked: 9.0
+});
+
+// 10. Contractor Sign-Off Done (to Worker & Job Room) - Phase 4 (Implemented)
+socket.on("signoff:done", {
+  attendanceId: "671230000000000000000006",
+  jobId: "652a9010ab34",
+  decision: "APPROVED" // or "DISPUTED"
+});
+
+// 11. Worker Marked Missed / No-Show Alert - Phase 4 (Implemented)
+socket.on("attendance:missed", {
+  jobId: "652a9010ab34",
+  workerId: "652a101bcf12",
+  workerName: "Ramesh Kumar",
+  date: "2026-10-20"
+});
+
+// 12. Escrow Released Notification (to Worker) - Phase 5
 socket.on("payment:released", {
   jobId: "652a9010ab34",
   amountPaise: 85000,

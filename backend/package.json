@@ -7,9 +7,10 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit --detectOpenHandles",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --forceExit --detectOpenHandles",
     "seed": "node src/scripts/seed.js",
     "seed:reset": "node src/scripts/seed.js --reset",
+    "seed:attendance": "node src/scripts/seedAttendance.js",
     "lint": "eslint src/",
     "format": "prettier --write \"src/**/*.js\""
   },

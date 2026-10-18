@@ -38,3 +38,4 @@ desktop.ini
 build/
 coverage/
 .nyc_output/
+uploads/

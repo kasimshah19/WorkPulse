@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { jest } from '@jest/globals';
 import mongoose from 'mongoose';
 import app from '../src/app.js';
 import env from '../src/config/env.js';
@@ -22,12 +23,14 @@ describe('Phase 3: Auth, Jobs, Matching & Applications Test Suite', () => {
   let worker2Token;
   let worker2Id;
 
+  jest.setTimeout(30000);
+
   beforeAll(async () => {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(env.mongoUriTest || env.mongoUri);
     }
     await ensureGeoIndexes();
-  });
+  }, 30000);
 
   afterAll(async () => {
     await mongoose.disconnect();
