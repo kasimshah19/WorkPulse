@@ -250,40 +250,150 @@ sequenceDiagram
 
 ---
 
-### 2.5 Sequence E: Dispute Raise -> Admin Resolution
+### 2.4 Sequence D: Phase 5 Payment Flows & Financial Operations
+
+#### 2.4.1 Contractor Wallet Top-Up (Razorpay / Mock + Webhook Idempotency)
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor C as Contractor
-    participant B as Backend API
-    participant DB as MongoDB (disputes, escrowtransactions, ledgerentries)
-    actor A as Admin Arbitrator
-    actor W as Worker
+    participant F as Contractor Web App
+    participant B as Backend API (/payments)
+    participant RP as Razorpay Gateway / Mock Driver
+    participant DB as MongoDB (paymentorders, wallets, ledgerentries)
 
-    C->>B: POST /api/v1/disputes { escrowTransactionId, reason: 'WORK_QUALITY', description: 'Wall masonry unfinished', evidence: [photos] }
-    B->>DB: Update EscrowTransaction (status: 'DISPUTED')
-    B->>DB: Insert Dispute doc (status: 'OPEN', raisedBy: contractor, against: worker)
-    B->>W: Notify worker of dispute via SMS / Push
-    B-->>C: 201 Created { disputeId, status: 'OPEN' }
+    C->>F: Enters Top-up Amount (e.g. ₹5,000 / 500,000 paise)
+    F->>B: POST /api/v1/payments/topup-order { amountPaise: 500000 }
+    B->>RP: createOrder({ amountPaise: 500000, currency: 'INR' })
+    RP-->>B: Return providerOrderId (order_mock_xyz or order_rp_xyz)
+    B->>DB: Insert PaymentOrder { user: C, providerOrderId, amountPaise: 500000, status: 'CREATED' }
+    B-->>F: 200 OK { orderId, amountPaise: 500000, keyId, provider }
+
+    alt Client-Side Checkout Flow
+        F->>RP: Launch Razorpay / Mock Modal Checkout
+        C->>RP: Authorizes payment (UPI / Test Card)
+        RP-->>F: Callback with { razorpay_payment_id, razorpay_signature }
+        F->>B: POST /api/v1/payments/verify { orderId, paymentId, signature }
+        B->>B: Verify HMAC-SHA256 signature server-side
+        B->>DB: Atomic session.withTransaction()
+        Note over B,DB: postLedgerGroup("TOPUP:pay_xyz")<br/>DEBIT GATEWAY_EXTERNAL 500,000<br/>CREDIT CONTRACTOR_WALLET 500,000<br/>Conditional Wallet balancePaise += 500000
+        B->>DB: Update PaymentOrder status: 'PAID', paidAt: now
+        B-->>F: 200 OK { success: true, balancePaise }
+    else Server Webhook (Concurrent or Async Catch-up)
+        RP->>B: POST /api/v1/payments/razorpay/webhook (Header: X-Razorpay-Signature)
+        B->>B: Verify Webhook HMAC on RAW body buffer
+        B->>DB: Atomic session.withTransaction()
+        Note over B,DB: postLedgerGroup("TOPUP:pay_xyz")<br/>Idempotency check: if already applied, return gracefully without duplicate credit!
+        B->>DB: Update PaymentOrder status: 'PAID'
+        B-->>RP: 200 OK
+    end
+```
+
+#### 2.4.2 Job Escrow Funding (Locking funds per worker per day)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Contractor
+    participant F as Contractor Web App
+    participant B as Backend API (/escrow)
+    participant DB as MongoDB (wallets, escrowtransactions, ledgerentries)
+    participant WS as Socket.io Gateway
+
+    Note over B,DB: When worker accepts job, createEscrowForAssignment()<br/>creates EscrowTransaction rows (status: 'CREATED') for each work day.
+
+    C->>F: Clicks "Escrow mein lock karein"
+    F->>B: GET /api/v1/escrow/jobs/:jobId/funding-quote
+    B->>DB: Calculate required escrow for all CREATED rows
+    B-->>F: 200 OK { requiredPaise: 160000, walletBalancePaise: 500000, shortfallPaise: 0 }
+
+    F->>B: POST /api/v1/escrow/jobs/:jobId/fund
+    B->>DB: Atomic session.withTransaction()
+    B->>DB: Verify contractor wallet balancePaise >= 160000
+    loop For each CREATED Escrow row
+        B->>DB: transition('CREATED' -> 'FUNDED')
+        Note over B,DB: postLedgerGroup("FUND:txId")<br/>DEBIT CONTRACTOR_WALLET 80,000<br/>CREDIT ESCROW_HOLD 80,000<br/>Atomic Wallet update: balancePaise -= 80000, lockedPaise += 80000
+    end
+    B->>WS: Emit 'escrow:funded' to contractor and assigned workers
+    B-->>F: 200 OK { fundedCount: 2, totalLockedPaise: 160000 }
+```
+
+#### 2.4.3 Check-Out -> Signoff / Auto-Approval -> Release & Simulated UPI Payout
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor W as Worker
+    actor C as Contractor
+    participant B as Backend API & Escrow Scheduler
+    participant DB as MongoDB (attendances, escrowtransactions, wallets, ledgerentries, payouts)
+    participant P as Payout Engine (Mock / RazorpayX)
+    participant WS as Socket.io Gateway
+
+    Note over W,B: Worker completes shift & clocks out.<br/>Escrow status: 'CHECKED_IN' -> 'CHECKED_OUT'<br/>autoApprovalAt set to now + autoApprovalHours (e.g. 12h)
+
+    alt Manual Contractor Signoff
+        C->>B: POST /api/v1/attendance/:id/signoff { decision: 'APPROVED' }
+        B->>DB: Atomic transition('CHECKED_OUT' -> 'APPROVED' -> 'RELEASED')
+    else Auto-Approval Scheduler (12h Expiry)
+        B->>DB: Query escrow rows with status='CHECKED_OUT' and autoApprovalAt <= now
+        B->>DB: Atomic transition('CHECKED_OUT' -> 'APPROVED' -> 'RELEASED') by actor 'system'
+    end
+
+    Note over B,DB: Inside same MongoDB session:<br/>postLedgerGroup("RELEASE:txId")<br/>DEBIT ESCROW_HOLD (contractor) 80,000<br/>CREDIT WORKER_WALLET (worker) 80,000 (minus fee)<br/>CREDIT PLATFORM_FEE (if fee > 0)<br/>Wallet updates: contractor lockedPaise -= 80000, worker balancePaise += 80000
+
+    B->>WS: Emit 'payment:released' to Worker & Contractor
+
+    opt Asynchronous Simulated UPI Payout (Triggered post-commit)
+        B->>DB: Create Payout doc { type: 'AUTO_RELEASE', status: 'PENDING', idempotencyKey: 'PAYOUT:txId' }
+        B->>P: Dispatch payout to worker UPI (e.g. ramesh@okhdfcbank)
+        alt Payout Success
+            P-->>B: Return success reference (e.g. MOCKUTR123456)
+            Note over B,DB: postLedgerGroup("PAYOUT:payoutId")<br/>DEBIT WORKER_WALLET 80,000<br/>CREDIT PAYOUT_EXTERNAL 80,000
+            B->>DB: Update Payout status: 'SUCCESS', Escrow payoutStatus: 'SUCCESS'
+            B->>WS: Emit 'payout:status' { status: 'SUCCESS', utr }
+        else Payout Failure (Simulated or Gateway Error)
+            P-->>B: Return failure
+            B->>DB: Update Payout status: 'FAILED' (Funds stay safe in Worker Wallet!)
+            Note over B: Escrow scheduler retries payout automatically up to 3 times
+        end
+    end
+```
+
+---
+
+### 2.5 Sequence E: Dispute Arbitration & Split Settlement
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Contractor
+    actor W as Worker
+    participant B as Backend API (/disputes)
+    participant DB as MongoDB (disputes, escrowtransactions, ledgerentries)
+    actor A as Platform Admin (/admin)
+    participant WS as Socket.io Gateway
+
+    Note over C,W: Contractor marks signoff DISPUTED or Worker raises claim
+    C->>B: POST /api/v1/attendance/:id/signoff { decision: 'DISPUTED', notes: 'Incomplete plastering' }
+    B->>DB: Atomic transition('CHECKED_OUT' -> 'DISPUTED')
+    B->>DB: Create Dispute with auto-collected evidence (attendance, selfie, GPS logs, rejected attempts)
+    B->>WS: Emit 'dispute:opened' to Worker, Contractor, and Admin
 
     A->>B: GET /api/v1/admin/disputes/:id
-    B->>DB: Fetch Dispute + Attendance (GPS checkin/out logs + selfies) + Job specs
-    B-->>A: Render Evidence Portal: Worker arrived on time (08:00 AM), left at 05:00 PM (8 hrs), contractor uploaded photo of partial mortar work
+    B-->>A: Render Evidence Dossier (Map geofence, hours worked, photos, audit trail)
 
-    A->>B: POST /api/v1/admin/disputes/:id/resolve { decision: 'SPLIT', workerAmountPaise: 50000, contractorRefundPaise: 30000, notes: '5/8th work completed satisfactorily' }
+    A->>B: POST /api/v1/admin/disputes/:id/resolve { decision: 'SPLIT', workerAmountPaise: 50000, notes: 'Mutual compromise' }
     
-    B->>B: Invariant Check: workerAmountPaise (50000) + contractorRefundPaise (30000) == totalEscrow (80000)
-    B->>DB: Update Dispute (status: 'SPLIT', resolution: {...})
-    B->>DB: Update EscrowTransaction (status: 'RELEASED')
+    B->>B: Validate workerAmount (50,000) + contractorRefund (30,000) == escrowAmount (80,000)
+    B->>DB: Atomic session.withTransaction()
+    Note over B,DB: postLedgerGroup("SPLIT:disputeId")<br/>DEBIT ESCROW_HOLD 80,000<br/>CREDIT WORKER_WALLET 50,000<br/>CREDIT CONTRACTOR_WALLET 30,000<br/>Wallet updates: contractor lockedPaise -= 80000, contractor balancePaise += 30000, worker balancePaise += 50000
+    B->>DB: Update Dispute status: 'RESOLVED', resolution: {...}
+    B->>DB: transition('DISPUTED' -> 'RELEASED')
     
-    B->>DB: Ledger: Debit ESCROW_HOLD (80000)
-    B->>DB: Ledger: Credit WORKER_WALLET (50000)
-    B->>DB: Ledger: Credit REFUND (to contractor) (30000)
-    
-    B->>W: Payout ₹500 via UPI & send SMS with resolution notes
-    B->>C: Refund ₹300 via Razorpay & send SMS notification
-    B-->>A: 200 OK { disputeStatus: 'RESOLVED', resolutionSummary }
+    B->>WS: Emit 'dispute:resolved' to participants
+    B-->>A: 200 OK { status: 'RESOLVED', resolutionSummary }
 ```
 
 ---

@@ -51,13 +51,18 @@ describe('WorkPulse Phase 4: Attendance, Proof-of-Work, Geofencing & Sign-Off Su
 
   jest.setTimeout(30000);
 
+  let originalFundingReq;
+
   beforeAll(async () => {
+    originalFundingReq = env.attendanceRequireFunding;
+    env.attendanceRequireFunding = false;
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(env.mongoUriTest);
     }
   }, 30000);
 
   afterAll(async () => {
+    env.attendanceRequireFunding = originalFundingReq;
     clock.reset();
     await mongoose.connection.close();
   });
@@ -372,6 +377,10 @@ describe('WorkPulse Phase 4: Attendance, Proof-of-Work, Geofencing & Sign-Off Su
     it('computes hoursWorked correctly using mocked clock', async () => {
       // Check-in at 09:00 IST
       const startTime = new Date('2026-10-18T03:30:00.000Z'); // 09:00 IST
+      await Job.findByIdAndUpdate(job._id, {
+        startDate: new Date('2026-10-18T00:00:00.000Z'),
+        endDate: new Date('2026-10-20T23:59:59.000Z'),
+      });
       clock.setMockTime(startTime);
 
       await request(app)

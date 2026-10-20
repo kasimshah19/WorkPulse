@@ -121,7 +121,10 @@ export default function ContractorJobAttendancePage() {
       ]);
 
       setJob(jobRes.data);
-      setAttendanceData(attRes.data || []);
+      const rows = Array.isArray(attRes.data)
+        ? attRes.data
+        : (attRes.data?.attendances || []);
+      setAttendanceData(rows);
       if (codeRes.data) {
         setCodeInfo(codeRes.data);
       }
@@ -139,8 +142,8 @@ export default function ContractorJobAttendancePage() {
   // Load thumbnail blob URLs securely for any row with a selfie
   useEffect(() => {
     let active = true;
-    attendanceData.forEach((row) => {
-      const att = row.attendance;
+    (Array.isArray(attendanceData) ? attendanceData : []).forEach((row) => {
+      const att = row.attendance || (row.attendanceId ? { ...row, _id: row.attendanceId } : null);
       if (att && att.selfieUrl && !thumbBlobs[att._id]) {
         api
           .get(`/attendance/${att._id}/selfie`, { responseType: 'blob' })
@@ -354,8 +357,9 @@ export default function ContractorJobAttendancePage() {
           </div>
         )}
 
-        {attendanceData.map((row) => {
-          const { worker, status: rowStatus, attendance } = row;
+        {(Array.isArray(attendanceData) ? attendanceData : []).map((row) => {
+          const { worker, status: rowStatus } = row;
+          const attendance = row.attendance || (row.attendanceId ? { ...row, _id: row.attendanceId } : null);
           const isAbsent = rowStatus === 'NOT_STARTED' || !attendance;
           const thumbUrl = attendance?._id ? thumbBlobs[attendance._id] : null;
 

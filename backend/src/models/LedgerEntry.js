@@ -13,13 +13,13 @@ const ledgerEntrySchema = new mongoose.Schema({
   transaction: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EscrowTransaction',
-    required: true,
+    default: null,
     index: true,
   },
   wallet: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Wallet',
-    required: true,
+    default: null,
     index: true,
   },
   entryType: {
@@ -37,16 +37,16 @@ const ledgerEntrySchema = new mongoose.Schema({
     required: true,
     min: 0,
     validate: {
-      validator: Number.isInteger,
-      message: '{VALUE} is not an integer value in paise',
+      validator: Number.isSafeInteger,
+      message: '{VALUE} is not a safe integer value in paise',
     },
   },
   balanceAfterPaise: {
     type: Number,
     required: true,
     validate: {
-      validator: Number.isInteger,
-      message: '{VALUE} must be an integer in paise',
+      validator: Number.isSafeInteger,
+      message: '{VALUE} must be a safe integer in paise',
     },
   },
   referenceType: {
@@ -62,9 +62,13 @@ const ledgerEntrySchema = new mongoose.Schema({
     required: true,
   },
   groupId: {
-    type: String, // UUID linking both DEBIT and CREDIT sides of a transaction
+    type: String, // Deterministic idempotency key string (e.g. "FUND:<txId>", "TOPUP:<paymentId>")
     required: true,
     index: true,
+  },
+  entryIndex: {
+    type: Number,
+    required: true,
   },
   createdAt: {
     type: Date,
@@ -73,12 +77,31 @@ const ledgerEntrySchema = new mongoose.Schema({
   },
 });
 
+// Unique compound index: (groupId, entryIndex)
+ledgerEntrySchema.index({ groupId: 1, entryIndex: 1 }, { unique: true });
+
 // Guard: Disallow updates and deletions to enforce append-only invariant
 ledgerEntrySchema.pre('save', function (next) {
   if (!this.isNew) {
     return next(new Error('Ledger entries are strictly immutable.'));
   }
   next();
+});
+
+const immutableMethods = [
+  'updateOne',
+  'updateMany',
+  'findOneAndUpdate',
+  'findOneAndDelete',
+  'deleteOne',
+  'deleteMany',
+  'replaceOne',
+];
+
+immutableMethods.forEach((method) => {
+  ledgerEntrySchema.pre(method, function (next) {
+    next(new Error(`Ledger entries are strictly immutable: cannot perform ${method}`));
+  });
 });
 
 const LedgerEntry = mongoose.model('LedgerEntry', ledgerEntrySchema);

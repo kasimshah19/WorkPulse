@@ -3,6 +3,7 @@ import {
   DISPUTE_REASON,
   DISPUTE_STATUS,
   DISPUTE_EVIDENCE_TYPE,
+  DISPUTE_OPENED_FROM,
 } from '../config/constants.js';
 
 /**
@@ -21,6 +22,12 @@ const disputeSchema = new mongoose.Schema(
       ref: 'Job',
       required: true,
       index: true,
+    },
+    openedFrom: {
+      type: String,
+      enum: Object.values(DISPUTE_OPENED_FROM),
+      default: DISPUTE_OPENED_FROM.CONTRACTOR_SIGNOFF,
+      required: true,
     },
     raisedBy: {
       type: mongoose.Schema.Types.ObjectId,

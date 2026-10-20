@@ -41,6 +41,8 @@ export default function DevLoginPage() {
         setAuth(res.data.user, res.data.token);
         if (role === 'contractor') {
           router.push('/contractor/dashboard');
+        } else if (role === 'admin') {
+          router.push('/admin/disputes');
         } else {
           router.push('/worker/dashboard');
         }
@@ -93,6 +95,7 @@ export default function DevLoginPage() {
         <div className="space-y-2">
           {users.map((u) => {
             const isContractor = u.role === 'contractor';
+            const isAdmin = u.role === 'admin';
             return (
               <div
                 key={u._id}
@@ -101,10 +104,16 @@ export default function DevLoginPage() {
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 ${
-                      isContractor ? 'bg-indigo-600' : 'bg-emerald-600'
+                      isAdmin
+                        ? 'bg-purple-600'
+                        : isContractor
+                        ? 'bg-indigo-600'
+                        : 'bg-emerald-600'
                     }`}
                   >
-                    {isContractor ? (
+                    {isAdmin ? (
+                      <span className="text-xs font-black">ADM</span>
+                    ) : isContractor ? (
                       <Briefcase className="w-4 h-4" />
                     ) : (
                       <HardHat className="w-4 h-4" />
@@ -118,7 +127,9 @@ export default function DevLoginPage() {
                       </h3>
                       <span
                         className={`text-[10px] font-bold px-1.5 py-0.2 rounded uppercase ${
-                          isContractor
+                          isAdmin
+                            ? 'bg-purple-500/20 text-purple-300'
+                            : isContractor
                             ? 'bg-indigo-500/20 text-indigo-300'
                             : 'bg-emerald-500/20 text-emerald-300'
                         }`}
@@ -128,7 +139,7 @@ export default function DevLoginPage() {
                     </div>
 
                     <p className="text-xs text-slate-400 font-mono">
-                      {u.phone} • {u.skills?.join(', ') || (isContractor ? 'Thekedaar' : 'No Skill')}
+                      {u.phone} • {isAdmin ? 'Arbitration Admin' : (u.skills?.join(', ') || (isContractor ? 'Thekedaar' : 'No Skill'))}
                     </p>
                   </div>
                 </div>

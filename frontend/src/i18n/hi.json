@@ -26,6 +26,26 @@
   "signoff_pending": "साइन-ऑफ़ बाकी (Sign-off Pending)",
   "signoff_approved": "मंज़ूर (Approved)",
   "signoff_disputed": "विवादित (Disputed)",
-  "auto_checkout": "ऑटो चेक-आउट (Auto Check-out)"
+  "auto_checkout": "ऑटो चेक-आउट (Auto Check-out)",
+  "wallet": "बटुआ / वॉलेट (Wallet)",
+  "available_balance": "उपलब्ध बैलेंस (Available Balance)",
+  "locked_in_escrow": "एस्क्रो में सुरक्षित (Locked in Escrow)",
+  "add_money": "पैसे जोड़ें (Add Money)",
+  "withdraw_upi": "बैंक / UPI में निकालें (Withdraw)",
+  "today_earnings": "आज की कमाई (Today's Earnings)",
+  "pending_escrow": "एस्क्रो में अटका (Pending)",
+  "fund_job": "एस्क्रो में पैसे लॉक करें (Lock Funds)",
+  "funding_status": "फंडिंग स्थिति (Funding Status)",
+  "shortfall_notice": "वॉलेट में कम बैलेंस है। कृपया पैसे जोड़ें।",
+  "raise_dispute": "विवाद दर्ज करें (Dispute)",
+  "dispute_reason": "विवाद का कारण",
+  "dispute_status_open": "समीक्षा जारी (Under Review)",
+  "dispute_resolved": "सुलझा लिया गया (Resolved)",
+  "reconciliation_title": "खाता मिलान (Reconciliation)",
+  "dev_tools": "डेवलपर सैंडबॉक्स",
+  "upi_id": "UPI आईडी",
+  "update_upi": "UPI आईडी बदलें",
+  "escrow_released": "भुगतान हो गया (Paid & Released)",
+  "escrow_funded": "सुरक्षित जमा (Funded & Guaranteed)"
 }
 

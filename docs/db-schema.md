@@ -1,10 +1,24 @@
-# WorkPulse – Database Schema Specification (Phase 1)
+# WorkPulse – Database Schema Specification (Phase 5)
 
 ---
 
-## 1. Entity-Relationship Overview (13 Collections)
+## 0. Money Rules & Accounting Convention
+- **Integer Paise Only:** Money is ALWAYS stored as integer paise in DB, API, and internal code (`Number.isSafeInteger`). Floating point math for currency is strictly prohibited.
+- **Ledger Convention:**
+  - `DEBIT`: Money leaves that account.
+  - `CREDIT`: Money enters that account.
+- **Double-Entry Invariant:** Every ledger group strictly satisfies $\sum \text{DEBIT} == \sum \text{CREDIT}$.
+- **Wallet Balances:**
+  - `balancePaise`: Usable available funds (modified by `CONTRACTOR_WALLET` and `WORKER_WALLET` entries).
+  - `lockedPaise`: Funds locked in platform escrow hold (modified by `ESCROW_HOLD` entries for that wallet).
+- **Running Balance:** `balanceAfterPaise` on each ledger entry reflects the affected wallet field (`balancePaise` or `lockedPaise`) immediately post-entry.
+- **Immutability:** `ledgerentries` is strictly append-only. Mongoose middleware rejects any `updateOne`, `updateMany`, `findOneAndUpdate`, `deleteOne`, `deleteMany`, `replaceOne`, or `save` on existing records. Financial adjustments are executed solely via reversing entries.
 
-The database consists of 13 MongoDB collections created via Mongoose (lowercase plural).
+---
+
+## 1. Entity-Relationship Overview (15 Collections)
+
+The database consists of 15 MongoDB collections created via Mongoose (lowercase plural).
 
 ```mermaid
 erDiagram
@@ -19,6 +33,8 @@ erDiagram
     users ||--o{ disputes : "raisedBy / against"
     users ||--o{ notifications : "receives"
     users ||--o{ auditlogs : "acts as actor"
+    users ||--o{ paymentorders : "tops up wallet"
+    users ||--o{ payouts : "receives payout"
 
     jobs ||--o{ jobapplications : "receives"
     jobs ||--o{ attendances : "tracks"
@@ -31,6 +47,7 @@ erDiagram
     escrowtransactions ||--o{ ledgerentries : "triggers double-entry"
     escrowtransactions ||--o| disputes : "arbitrates"
     escrowtransactions ||--o| attendances : "links proof"
+    escrowtransactions ||--o| payouts : "auto-release payout"
 ```
 
 ---
@@ -39,19 +56,21 @@ erDiagram
 
 | Collection Name | Primary Purpose | Approx Growth Rate | Retention Policy |
 |---|---|---|---|
-| `users` | User accounts, profiles, skills, and geo-locations | Low (1 doc / registered user) | Permanent |
+| `users` | User accounts, profiles, skills, UPI ID, and geo-locations | Low (1 doc / registered user) | Permanent |
 | `otps` | Short-lived OTP codes for phone verification | Medium (transient) | TTL: 5 minutes auto-delete |
-| `wallets` | Integer paise balance ledger container per user | Low (1 doc / user) | Permanent |
+| `wallets` | Integer paise balance container (`balancePaise`, `lockedPaise`, `version`) | Low (1 doc / user) | Permanent |
 | `jobs` | Job requisition postings and geofence parameters | Medium | Permanent |
 | `jobapplications` | Worker match notification and application states | High (N docs / job) | 180 Days |
 | `attendances` | GPS and selfie proof-of-work records | High (1 doc / worker / day) | Permanent |
-| `escrowtransactions` | Daily financial state machine records | High (1 doc / worker / day) | 7 Years (Financial Compliance) |
-| `ledgerentries` | Immutable double-entry financial audit logs | Very High (2+ docs / txn) | Permanent (Append-Only) |
+| `escrowtransactions` | Daily financial state machine records per worker per day | High (1 doc / worker / day) | 7 Years (Financial Compliance) |
+| `ledgerentries` | Immutable double-entry financial audit logs (APPEND-ONLY) | Very High (2+ docs / txn) | Permanent (Append-Only) |
+| `paymentorders` | External contractor wallet top-up records (Razorpay/Mock) | Medium | 7 Years (Compliance) |
+| `payouts` | Worker UPI payout dispatches (Auto-release / Withdrawal) | High (1 doc / payout) | 7 Years (Compliance) |
 | `ratings` | Two-way reputation reviews | Medium (2 docs / job completion) | Permanent |
 | `incidents` | Emergency SOS and site safety conflict logs | Low | Permanent |
 | `disputes` | Formal arbitration files with uploaded evidence | Low | Permanent |
 | `notifications` | Socket, Push, and SMS notification records | Very High | TTL: 90 Days auto-delete |
-| `auditlogs` | Immutable system event and PII access logs | Very High | 7 Years (Compliance) |
+| `auditlogs` | Immutable system event and financial access logs | Very High | 7 Years (Compliance) |
 
 ---
 
@@ -680,6 +699,61 @@ erDiagram
   "createdAt": "2026-10-20T10:00:00.000Z"
 }
 ```
+
+---
+
+### 3.14 `paymentorders`
+**Purpose**: Records contractor wallet top-up orders initiated through payment gateway (Razorpay or Mock provider).
+
+| Field Name | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `_id` | ObjectId | Yes | auto | Primary Key |
+| `user` | ObjectId | Yes | - | Ref: `User` (Contractor) |
+| `purpose` | String | Yes | `WALLET_TOPUP` | Purpose of payment order |
+| `amountPaise` | Number | Yes | - | Top-up amount in safe integer paise |
+| `currency` | String | Yes | `INR` | Currency code |
+| `provider` | String | Yes | `mock` | Enum: `mock`, `razorpay` |
+| `providerOrderId` | String | Yes | - | Gateway order ID (unique) |
+| `providerPaymentId` | String | No | `null` | Gateway payment ID upon capture (unique sparse) |
+| `status` | String | Yes | `CREATED` | Enum: `CREATED`, `PAID`, `FAILED`, `EXPIRED` |
+| `signatureVerified` | Boolean | Yes | `false` | True when cryptographic HMAC-SHA256 signature is verified |
+| `webhookReceivedAt` | Date | No | `null` | Timestamp when webhook event was received |
+| `paidAt` | Date | No | `null` | Timestamp when payment succeeded |
+| `ledgerGroupId` | String | No | `null` | Deterministic ledger group ID (`TOPUP:<paymentId>`) |
+| `createdAt` | Date | Yes | `now` | Creation timestamp |
+| `updatedAt` | Date | Yes | `now` | Last update timestamp |
+
+* **Indexes**:
+  * `{ providerOrderId: 1 }` (unique)
+  * `{ providerPaymentId: 1 }` (unique, sparse)
+  * `{ user: 1, status: 1 }`
+
+---
+
+### 3.15 `payouts`
+**Purpose**: Records simulated UPI payout dispatches to workers (via auto-release on escrow approval or manual worker wallet withdrawal).
+
+| Field Name | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `_id` | ObjectId | Yes | auto | Primary Key |
+| `user` | ObjectId | Yes | - | Ref: `User` (Worker) |
+| `escrowTransaction` | ObjectId | No | `null` | Ref: `EscrowTransaction` (null for manual withdrawals) |
+| `type` | String | Yes | - | Enum: `AUTO_RELEASE`, `WITHDRAWAL` |
+| `amountPaise` | Number | Yes | - | Disbursed amount in integer paise |
+| `upiId` | String | Yes | - | Worker UPI VPA snapshot at time of payout |
+| `provider` | String | Yes | `mock` | Payout provider driver |
+| `providerRef` | String | No | `""` | Bank UTR reference from gateway |
+| `status` | String | Yes | `PENDING` | Enum: `PENDING`, `SUCCESS`, `FAILED` |
+| `attempts` | Number | Yes | `0` | Number of dispatch attempts (max 3 retries) |
+| `failureReason` | String | No | `""` | Failure error message if rejected |
+| `ledgerGroupId` | String | No | `null` | Ledger group ID (`PAYOUT:<payoutId>`) |
+| `idempotencyKey` | String | Yes | - | Unique idempotency key (prevents duplicate bank dispatches) |
+| `createdAt` | Date | Yes | `now` | Creation timestamp |
+| `updatedAt` | Date | Yes | `now` | Last update timestamp |
+
+* **Indexes**:
+  * `{ idempotencyKey: 1 }` (unique)
+  * `{ status: 1, attempts: 1, createdAt: 1 }`
 
 ---
 

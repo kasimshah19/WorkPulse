@@ -22,7 +22,7 @@ const errorHandler = (err, req, res, _next) => {
     error: {
       code,
       message,
-      ...(err.details ? { details: err.details } : {}),
+      ...(err.details && typeof err.details === 'object' ? { ...err.details, details: err.details } : (err.details ? { details: err.details } : {})),
     },
   });
 };

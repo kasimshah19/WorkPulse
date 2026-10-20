@@ -61,13 +61,19 @@ All REST responses strictly follow the standardized envelope:
 | :--- | :--- | :--- |
 | `400` | `VALIDATION_ERROR` | Request body or query parameters failed Joi schema validation |
 | `400` | `INVALID_OTP` | OTP is incorrect or expired |
-| `400` | `ESCROW_NOT_FUNDED` | Check-in attempted on an un-funded escrow day |
+| `400` | `PAYMENT_SIGNATURE_INVALID` | Cryptographic HMAC signature check failed on Razorpay verify or webhook |
+| `400` | `INVALID_SPLIT_SUM` | Split dispute resolution sum does not match escrow amount |
+| `402` | `INSUFFICIENT_BALANCE` | Wallet balance insufficient to fund job milestone or withdraw |
+| `402` | `ESCROW_NOT_FUNDED` | Check-in rejected because today's escrow row is not FUNDED |
 | `400` | `GEOFENCE_EXCEEDED` | GPS coordinates exceed allowed geofence boundary |
 | `401` | `UNAUTHORIZED` | Missing, malformed, or expired access token |
 | `401` | `TOKEN_EXPIRED` | Access token expired; use refresh token |
 | `403` | `FORBIDDEN` | Role mismatch (e.g., worker accessing contractor route) |
 | `404` | `NOT_FOUND` | Resource ID does not exist |
 | `409` | `CONFLICT` | Resource already exists or concurrent transition blocked |
+| `409` | `INVALID_TRANSITION` | Requested escrow transition is illegal from current state |
+| `409` | `JOB_HAS_ACTIVE_WORK` | Job cancellation blocked due to active checked-in shifts |
+| `409` | `DISPUTE_ALREADY_RESOLVED` | Dispute has already been arbitrated |
 | `409` | `IDEMPOTENCY_CONFLICT` | Action already executed with identical key |
 | `429` | `RATE_LIMIT_EXCEEDED` | Too many requests within rate limit window |
 | `500` | `INTERNAL_SERVER_ERROR` | Unhandled server exception |
@@ -652,12 +658,151 @@ All REST responses strictly follow the standardized envelope:
 
 ---
 
-### 2.12 Admin Operations (`/admin`)
+### 2.12 Wallet & Double-Entry Ledger (`/wallet`)
 
-- `GET /admin/users` (List users with status and verification filters)
-- `POST /admin/users/:id/verify` (Manually verify KYC or flag accounts)
-- `GET /admin/disputes` (Queue of unresolved disputes)
-- `GET /admin/stats` (Platform KPIs: active jobs, funds in escrow, daily releases)
+#### 1. Get Wallet Balance
+- **Method & Path**: `GET /wallet` (or `GET /wallet/me`)
+- **Auth**: Authenticated User
+- **Success Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "balancePaise": 500000,
+    "lockedPaise": 80000,
+    "totalPaise": 580000,
+    "currency": "INR",
+    "status": "active"
+  }
+}
+```
+
+#### 2. Get Wallet Ledger Entries
+- **Method & Path**: `GET /wallet/ledger?page=1&limit=20`
+- **Auth**: Authenticated User
+- **Success Response (200)**: Paginated array of immutable `LedgerEntry` items for the user's wallet with human-readable description and balanceAfterPaise.
+
+#### 3. Get Wallet Summary
+- **Method & Path**: `GET /wallet/summary`
+- **Auth**: Authenticated User
+- **Success Response (200)**:
+  - Worker: today's earnings, pending (CHECKED_OUT/APPROVED) amount, released total.
+  - Contractor: locked in escrow, total spent, available balance.
+
+#### 4. Withdraw Funds to UPI
+- **Method & Path**: `POST /wallet/withdraw`
+- **Auth**: Role `worker`
+- **Body**: `{ "amountPaise": 50000, "idempotencyKey": "uuid-v4" }`
+- **Success Response (200)**: Payout record with status `SUCCESS` or `PENDING` and simulated UTR reference.
+
+---
+
+### 2.13 Payments & Gateway Top-ups (`/payments`)
+
+#### 1. Create Top-up Order
+- **Method & Path**: `POST /payments/topup-order`
+- **Auth**: Role `contractor`
+- **Body**: `{ "amountPaise": 500000 }` (min: 10,000, max: 5,000,000 paise)
+- **Success Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": "order_mock_123456",
+    "amountPaise": 500000,
+    "currency": "INR",
+    "keyId": "rzp_test_public_key",
+    "provider": "mock"
+  }
+}
+```
+
+#### 2. Verify Payment Signature
+- **Method & Path**: `POST /payments/verify`
+- **Auth**: Role `contractor`
+- **Body**: `{ "orderId": "order_mock_123456", "paymentId": "pay_mock_789", "signature": "hmac_hex" }`
+- **Success Response (200)**: Verifies cryptographic signature server-side and credits contractor wallet once via `TOPUP:<paymentId>` ledger group.
+
+#### 3. Razorpay Webhook
+- **Method & Path**: `POST /payments/razorpay/webhook`
+- **Auth**: Public route; verified using `X-Razorpay-Signature` HMAC-SHA256 over raw JSON payload.
+- **Success Response (200)**: Credits contractor wallet idempotently; returns 200 immediately.
+
+#### 4. List Payment Orders
+- **Method & Path**: `GET /payments/orders`
+- **Auth**: Authenticated contractor (paginated history of top-up orders).
+
+---
+
+### 2.14 Escrow Operations (`/escrow`)
+
+#### 1. Fund Job Escrow
+- **Method & Path**: `POST /escrow/jobs/:id/fund`
+- **Auth**: Role `contractor` (job owner)
+- **Success Response (200)**: Locks funds for all pending `CREATED` escrow rows of the job in one atomic database transaction. Returns funded rows count and total paise locked.
+- **Errors**: `402 INSUFFICIENT_BALANCE` if contractor balance < required.
+
+#### 2. Get Job Funding Quote
+- **Method & Path**: `GET /escrow/jobs/:id/funding-quote`
+- **Auth**: Role `contractor`, `admin`
+- **Success Response (200)**: `{ jobId, pendingDaysCount, wagePerDayPaise, requiredPaise, walletBalancePaise, shortfallPaise, canFund }`.
+
+#### 3. Get Job Escrow Rows
+- **Method & Path**: `GET /escrow/jobs/:id`
+- **Auth**: Role `contractor`, `admin`
+- **Success Response (200)**: All daily escrow rows for the job with status breakdown and financial totals (`totalPaise`, `fundedPaise`, `lockedPaise`, `releasedPaise`, `refundedPaise`, `pendingFundingPaise`).
+
+#### 4. Get My Escrows
+- **Method & Path**: `GET /escrow/my` (or `GET /escrow/me`)
+- **Auth**: Authenticated worker or contractor
+- **Success Response (200)**: Returns user's daily escrow rows with statuses and populated job metadata.
+
+#### 5. Get Escrow Detail
+- **Method & Path**: `GET /escrow/:id`
+- **Auth**: Participant (worker, contractor) or `admin`
+- **Success Response (200)**: Escrow document with full `statusHistory` audit trail.
+
+---
+
+### 2.15 Disputes & Arbitration (`/disputes`)
+
+#### 1. Raise Dispute
+- **Method & Path**: `POST /disputes`
+- **Auth**: Participant (worker or contractor)
+- **Body**: `{ "escrowTransactionId": "...", "reason": "NOT_APPROVED", "description": "..." }`
+- **Success Response (201)**: Creates dispute with auto-collected proof (attendance, GPS, selfie, audit logs).
+
+#### 2. Get My Disputes
+- **Method & Path**: `GET /disputes/my`
+- **Auth**: Authenticated user (disputes where user is raisedBy or against).
+
+#### 3. Get Dispute Detail
+- **Method & Path**: `GET /disputes/:id`
+- **Auth**: Participant or admin. Returns evidence timeline and arbitration status.
+
+#### 4. Append Dispute Evidence
+- **Method & Path**: `POST /disputes/:id/evidence`
+- **Auth**: Participant or admin
+- **Body**: `{ "type": "note", "refId": "Note text...", "url": "..." }`
+- **Success Response (200)**: Appends note or photo evidence to open dispute.
+
+---
+
+### 2.16 Admin Governance (`/admin`)
+
+- `GET /admin/disputes?status=OPEN`: Dispute triage queue sorted by oldest first.
+- `GET /admin/disputes/:id`: Complete evidence bundle (attendance, authenticated selfie URL, GPS logs, rejected checkin attempts).
+- `POST /admin/disputes/:id/resolve`: Arbitrate dispute (`FOR_WORKER`, `FOR_CONTRACTOR`, `SPLIT`).
+- `GET /admin/ledger/reconcile`: 5-invariant double-entry reconciliation report (`PASS` / `FAIL`).
+- `GET /admin/stats`: Financial platform KPIs (topups total, locked escrow, released total, open disputes).
+
+---
+
+### 2.17 Dev Endpoints (`/dev`) (NODE_ENV != 'production' only)
+
+- `POST /dev/wallet/topup`: Instant developer credit of ₹5,000 to contractor wallet via double-entry ledger.
+- `POST /dev/escrow/:id/expire-approval`: Backdates `autoApprovalAt` to test scheduler auto-approval.
+- `POST /dev/scheduler/run`: Manually triggers background cron batch (autoApprove, retryPayouts, expireTopups).
 
 ---
 

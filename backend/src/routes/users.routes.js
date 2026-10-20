@@ -9,6 +9,7 @@ import {
   updateMe,
   updateLocation,
   updateAvailability,
+  updateUPI,
 } from '../controllers/users.controller.js';
 
 const router = Router();
@@ -20,6 +21,10 @@ const updateMeSchema = Joi.object({
   experienceYears: Joi.number().min(0).max(50).optional(),
   address: Joi.string().max(300).optional().allow(''),
   upiId: Joi.string().max(100).optional().allow(''),
+});
+
+const updateUpiSchema = Joi.object({
+  upiId: Joi.string().required(),
 });
 
 const updateLocationSchema = Joi.object({
@@ -36,5 +41,6 @@ router.use(auth);
 router.patch('/me', validate(updateMeSchema), asyncHandler(updateMe));
 router.patch('/me/location', validate(updateLocationSchema), asyncHandler(updateLocation));
 router.patch('/me/availability', role('worker'), validate(updateAvailabilitySchema), asyncHandler(updateAvailability));
+router.patch('/me/upi', validate(updateUpiSchema), asyncHandler(updateUPI));
 
 export default router;

@@ -6,6 +6,9 @@ import { sendSuccess, sendError } from '../utils/apiResponse.js';
 import { haversineDistance } from '../utils/geo.js';
 import { getIO } from '../sockets/index.js';
 import logger from '../utils/logger.js';
+import EscrowTransaction from '../models/EscrowTransaction.js';
+import { ESCROW_STATUS } from '../config/constants.js';
+import { createEscrowForAssignment, refund, transition } from '../services/escrow.service.js';
 
 /**
  * POST /api/v1/jobs
@@ -171,6 +174,35 @@ export const cancelJob = async (req, res) => {
 
   if (!['DRAFT', 'OPEN', 'FILLED'].includes(job.status)) {
     return sendError(res, 400, `Cannot cancel job in status '${job.status}'`, 'INVALID_STATUS');
+  }
+
+  // Phase 5: Block cancel if any day is CHECKED_IN or CHECKED_OUT and unresolved
+  const activeWorkRows = await EscrowTransaction.find({
+    job: job._id,
+    status: { $in: [ESCROW_STATUS.CHECKED_IN, ESCROW_STATUS.CHECKED_OUT] },
+  });
+
+  if (activeWorkRows.length > 0) {
+    return sendError(
+      res,
+      409,
+      'Cannot cancel job while workers have active or unapproved shifts.',
+      'JOB_HAS_ACTIVE_WORK'
+    );
+  }
+
+  // Handle escrow cancellation / refunds for all rows of this job
+  const allJobEscrows = await EscrowTransaction.find({ job: job._id });
+  for (const row of allJobEscrows) {
+    if (row.status === ESCROW_STATUS.FUNDED) {
+      await refund(row._id, req.user._id, 'contractor', 'Job cancelled by contractor', ESCROW_STATUS.CANCELLED);
+    } else if (row.status === ESCROW_STATUS.CREATED) {
+      await transition(row._id, ESCROW_STATUS.CANCELLED, {
+        actor: req.user._id,
+        actorRole: 'contractor',
+        reason: 'Job cancelled by contractor',
+      });
+    }
   }
 
   job.status = 'CANCELLED';
@@ -464,6 +496,9 @@ export const acceptJob = async (req, res) => {
     existingApp.status = 'ASSIGNED';
     existingApp.respondedAt = new Date();
     await existingApp.save();
+
+    // Phase 5: Create daily escrow transaction rows (status CREATED) for the assigned worker
+    await createEscrowForAssignment(updatedJob, workerId);
 
     // 4. If all slots filled, close the job and expire remaining applicants
     const isNowFilled = updatedJob.workersAssignedCount >= updatedJob.workersNeeded;

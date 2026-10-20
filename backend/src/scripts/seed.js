@@ -7,6 +7,9 @@ import Job from '../models/Job.js';
 import JobApplication from '../models/JobApplication.js';
 import Notification from '../models/Notification.js';
 import Otp from '../models/Otp.js';
+import LedgerEntry from '../models/LedgerEntry.js';
+import { postLedgerGroup } from '../services/ledger.service.js';
+import { LEDGER_ACCOUNT } from '../config/constants.js';
 import { destinationPoint, haversineDistance } from '../utils/geo.js';
 import { ensureGeoIndexes } from '../services/matching.service.js';
 
@@ -27,13 +30,16 @@ const runSeed = async () => {
   console.log(`\n🌱 WorkPulse Seed Script Starting... (Center: [Lat: ${centerLat}, Lng: ${centerLng}])`);
 
   if (isReset) {
-    console.log('🧹 Wiping existing seed data (users, jobs, applications, notifications, otps, wallets)...');
+    console.log('🧹 Wiping existing seed data (users, jobs, applications, notifications, otps, wallets, ledger)...');
     await User.deleteMany({});
     await Wallet.deleteMany({});
     await Job.deleteMany({});
     await JobApplication.deleteMany({});
     await Notification.deleteMany({});
     await Otp.deleteMany({});
+    if (LedgerEntry.collection) {
+      await LedgerEntry.collection.deleteMany({});
+    }
     console.log('✨ Data wiped cleanly.');
   }
 
@@ -55,13 +61,38 @@ const runSeed = async () => {
       kycStatus: 'simulated_verified',
     });
 
-    await Wallet.create({
+    const cWallet = await Wallet.create({
       user: contractor._id,
-      balancePaise: 5000000, // ₹50,000 for test posting/escrow
+      balancePaise: 0,
       lockedPaise: 0,
       currency: 'INR',
       status: 'active',
     });
+
+    await postLedgerGroup({
+      groupId: `seed-initial-topup-${contractor._id.toString()}`,
+      type: 'TOPUP',
+      description: 'Initial seed contractor wallet topup',
+      legs: [
+        { account: LEDGER_ACCOUNT.GATEWAY_EXTERNAL, amountPaise: -5000000 },
+        { account: LEDGER_ACCOUNT.CONTRACTOR_WALLET, userId: contractor._id, amountPaise: 5000000 },
+      ],
+    });
+  }
+
+  // 1b. Create or Update Admin (+919000000900)
+  const adminPhone = '+919000000900';
+  let admin = await User.findOne({ phone: adminPhone });
+  if (!admin) {
+    admin = await User.create({
+      name: 'WorkPulse Admin',
+      phone: adminPhone,
+      role: 'admin',
+      languagePreference: 'hi',
+      isActive: true,
+      kycStatus: 'simulated_verified',
+    });
+    console.log('✅ Created Admin user: +919000000900');
   }
 
   // 2. Define the 8 Seed Workers

@@ -20,6 +20,10 @@ app.use(
   }),
 );
 app.use(morgan(env.nodeEnv === 'development' ? 'dev' : 'combined'));
+
+// Raw body parser for Razorpay webhook verification (BEFORE global express.json)
+app.use('/api/v1/payments/razorpay/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());

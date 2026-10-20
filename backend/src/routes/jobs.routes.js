@@ -17,6 +17,7 @@ import {
   acceptJob,
   rejectJob,
 } from '../controllers/jobs.controller.js';
+import { fundJobEscrow, getJobFundingQuote } from '../controllers/escrow.controller.js';
 import { jobAttendanceRouter } from './attendance.routes.js';
 
 const router = Router();
@@ -74,6 +75,8 @@ router.get('/my', role('contractor'), asyncHandler(getMyJobs));
 router.patch('/:id', role('contractor'), validate(updateJobSchema), asyncHandler(updateJob));
 router.post('/:id/publish', role('contractor'), asyncHandler(publishJob));
 router.post('/:id/cancel', role('contractor'), asyncHandler(cancelJob));
+router.post('/:id/fund', role('contractor'), asyncHandler(fundJobEscrow));
+router.get('/:id/funding-quote', role('contractor', 'admin'), asyncHandler(getJobFundingQuote));
 router.get('/:id/applicants', role('contractor', 'admin'), asyncHandler(getJobApplicants));
 
 // Worker routes

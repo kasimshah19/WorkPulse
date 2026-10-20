@@ -7,8 +7,12 @@ import Attendance from '../models/Attendance.js';
 import { destinationPoint } from '../utils/geo.js';
 import { getISTDateString } from '../utils/time.js';
 import { generateAttendanceCode } from '../services/attendance.service.js';
-import { JOB_STATUS, APPLICATION_STATUS } from '../config/constants.js';
+import { JOB_STATUS, APPLICATION_STATUS, LEDGER_ACCOUNT } from '../config/constants.js';
 import env from '../config/env.js';
+import { getOrCreateWallet } from '../services/wallet.service.js';
+import { postLedgerGroup } from '../services/ledger.service.js';
+import { createEscrowForAssignment, fundJob } from '../services/escrow.service.js';
+import EscrowTransaction from '../models/EscrowTransaction.js';
 
 const CENTER_LAT = env.seedCenterLat || 18.5204;
 const CENTER_LNG = env.seedCenterLng || 73.8567;
@@ -123,8 +127,51 @@ async function seedAttendance() {
     status: APPLICATION_STATUS.ASSIGNED,
   });
 
-  // Clean test attendances for these jobs
+  // Clean test attendances and escrows for these jobs
   await Attendance.deleteMany({ job: { $in: [job1._id, job2._id] } });
+  await EscrowTransaction.deleteMany({ job: { $in: [job1._id, job2._id] } });
+
+  // Ensure contractor wallet has sufficient funds
+  await getOrCreateWallet(contractor._id);
+  try {
+    await postLedgerGroup({
+      groupId: `seed-attendance-contractor-topup-${Date.now()}`,
+      type: 'TOPUP',
+      description: 'Seed Attendance Contractor Topup',
+      legs: [
+        { account: LEDGER_ACCOUNT.GATEWAY_EXTERNAL, amountPaise: -5000000, currency: 'INR' },
+        { account: LEDGER_ACCOUNT.CONTRACTOR_WALLET, userId: contractor._id, amountPaise: 5000000, currency: 'INR' },
+      ],
+      metadata: { seeded: true },
+    });
+  } catch (err) {
+    // Ignore if topup already done
+  }
+
+  // Create & Fund Escrows for Job 1
+  for (const phone of ['+919000000001', '+919000000002']) {
+    await createEscrowForAssignment({
+      jobId: job1._id,
+      workerId: workers[phone]._id,
+      contractorId: contractor._id,
+      wagePerDayPaise: job1.wagePerDayPaise,
+      startDate: job1.startDate,
+      endDate: job1.endDate,
+    });
+  }
+  await fundJob(job1._id, contractor._id);
+
+  // Create & Fund Escrows for Job 2
+  await createEscrowForAssignment({
+    jobId: job2._id,
+    workerId: workers['+919000000008']._id,
+    contractorId: contractor._id,
+    wagePerDayPaise: job2.wagePerDayPaise,
+    startDate: job2.startDate,
+    endDate: job2.endDate,
+  });
+  await fundJob(job2._id, contractor._id);
+  console.log('✅ Created and funded escrows for Job 1 and Job 2.');
 
   // 5. Compute test coordinate points relative to the site
   const insidePt = destinationPoint(CENTER_LAT, CENTER_LNG, 0.05, 0); // 50m North

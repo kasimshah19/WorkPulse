@@ -24,6 +24,14 @@ import {
 import clock from '../utils/clock.js';
 import { saveSelfie } from './storage.service.js';
 import { getIO } from '../sockets/index.js';
+import EscrowTransaction from '../models/EscrowTransaction.js';
+import { ESCROW_STATUS, DISPUTE_OPENED_FROM } from '../config/constants.js';
+import {
+  onCheckIn,
+  onCheckOut,
+  approveAndRelease,
+  openDispute,
+} from './escrow.service.js';
 
 /**
  * Custom operational error with HTTP status and code.
@@ -164,10 +172,22 @@ export async function checkIn({
     // 1. Assigned Context (NOT_ASSIGNED, JOB_NOT_ACTIVE, OUTSIDE_JOB_DATES)
     const { job, todayDate } = await getAssignedContext(jobId, workerId);
 
-    // 2. Escrow Funding Check (Feature-flagged for Phase 5)
+    // 2. Escrow Funding Check (Phase 5)
+    let todayEscrow = await EscrowTransaction.findOne({
+      job: jobId,
+      worker: workerId,
+      dayDate: todayDate,
+    });
+
     if (env.attendanceRequireFunding) {
-      // TODO(Phase 5): Check that escrow is in FUNDED state for today's milestone.
-      throw new AttendanceError(400, 'ESCROW_NOT_FUNDED', 'Escrow for this day is not yet funded.');
+      if (!todayEscrow || todayEscrow.status !== ESCROW_STATUS.FUNDED) {
+        throw new AttendanceError(
+          402,
+          'ESCROW_NOT_FUNDED',
+          'Contractor ne abhi paisa lock nahi kiya (Escrow is not funded for today).',
+          { currentStatus: todayEscrow?.status || 'NOT_FOUND' }
+        );
+      }
     }
 
     // 3. Time Window Validation
@@ -338,6 +358,11 @@ export async function checkIn({
     // Atomically transition job to IN_PROGRESS if currently FILLED
     if (job.status === JOB_STATUS.FILLED) {
       await Job.findByIdAndUpdate(jobId, { status: JOB_STATUS.IN_PROGRESS });
+    }
+
+    // 10. Escrow transition: FUNDED -> CHECKED_IN
+    if (todayEscrow) {
+      await onCheckIn(attendance);
     }
 
     // 11. Notifications and Socket Events
@@ -523,6 +548,9 @@ export async function checkOut({
       io.to(`job:${jobId}`).emit('attendance:checkedOut', payload);
     }
 
+    // Trigger Escrow transition: CHECKED_IN -> CHECKED_OUT with autoApprovalAt
+    await onCheckOut(updated);
+
     return updated;
   } catch (err) {
     await logRejectedAttempt({
@@ -629,10 +657,36 @@ export async function signoff({ attendanceId, contractorId, decision, reason = '
 
 /**
  * Hook for downstream escrow integration.
- * TODO(Phase 5): approve -> escrow APPROVED -> release; dispute -> escrow DISPUTED.
+ * approve -> escrow APPROVED -> release; dispute -> escrow DISPUTED.
  */
 export async function onSignoffDecision(attendance, decision) {
-  // Phase 5 implementation placeholder
+  const jobId = attendance.job?._id || attendance.job;
+  const escrow = await EscrowTransaction.findOne({
+    job: jobId,
+    worker: attendance.worker,
+    dayDate: attendance.date,
+  });
+
+  if (!escrow) return { attendanceId: attendance._id, decision };
+
+  if (decision === 'APPROVED') {
+    return await approveAndRelease(
+      escrow._id,
+      attendance.contractorSignoff?.by,
+      'contractor',
+      'Contractor approved sign-off'
+    );
+  } else if (decision === 'DISPUTED') {
+    return await openDispute({
+      escrowId: escrow._id,
+      actorId: attendance.contractorSignoff?.by,
+      actorRole: 'contractor',
+      reason: 'NOT_APPROVED',
+      description: attendance.contractorSignoff?.reason || 'Contractor rejected attendance sign-off',
+      openedFrom: DISPUTE_OPENED_FROM.CONTRACTOR_SIGNOFF,
+    });
+  }
+
   return { attendanceId: attendance._id, decision };
 }
 
@@ -736,6 +790,7 @@ export async function getJobAttendanceForDate(jobId, dateInput) {
       selfieUrl: att?.selfieUrl ? `/api/v1/attendance/${att._id}/selfie` : '',
       contractorSignoff: att?.contractorSignoff || null,
       autoCheckout: att?.autoCheckout || false,
+      attendance: att || null,
     };
   });
 

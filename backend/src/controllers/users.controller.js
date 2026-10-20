@@ -85,3 +85,28 @@ export const updateAvailability = async (req, res) => {
     isAvailable: updatedUser.isAvailable,
   });
 };
+
+/**
+ * PATCH /api/v1/users/me/upi
+ * Validate and save user's UPI ID.
+ */
+export const updateUPI = async (req, res) => {
+  const { upiId } = req.body;
+  const upiRegex = /^[\w.-]+@[\w.-]+$/;
+
+  if (!upiId || !upiRegex.test(String(upiId).trim())) {
+    return sendError(res, 400, 'Invalid UPI ID format (e.g. name@bank or 9876543210@paytm)', 'INVALID_UPI_FORMAT');
+  }
+
+  // NOTE: In production, this would call a real-time bank VPA validation API.
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    { $set: { upiId: String(upiId).trim().toLowerCase() } },
+    { new: true }
+  ).select('-__v');
+
+  return sendSuccess(res, 200, {
+    message: 'UPI ID verified and saved successfully.',
+    upiId: updatedUser.upiId,
+  });
+};

@@ -132,15 +132,13 @@ export const ALLOWED_TRANSITIONS = Object.freeze({
     ESCROW_STATUS.CHECKED_IN,
     ESCROW_STATUS.CANCELLED,
     ESCROW_STATUS.REFUNDED,
-    ESCROW_STATUS.DISPUTED,
   ],
   [ESCROW_STATUS.CHECKED_IN]: [ESCROW_STATUS.CHECKED_OUT, ESCROW_STATUS.DISPUTED],
   [ESCROW_STATUS.CHECKED_OUT]: [ESCROW_STATUS.APPROVED, ESCROW_STATUS.DISPUTED],
   [ESCROW_STATUS.APPROVED]: [ESCROW_STATUS.RELEASED],
   [ESCROW_STATUS.DISPUTED]: [
-    ESCROW_STATUS.APPROVED,
-    ESCROW_STATUS.REFUNDED,
     ESCROW_STATUS.RELEASED,
+    ESCROW_STATUS.REFUNDED,
   ],
   [ESCROW_STATUS.RELEASED]: [], // Terminal State
   [ESCROW_STATUS.REFUNDED]: [], // Terminal State
@@ -155,11 +153,45 @@ export const LEDGER_ENTRY_TYPE = Object.freeze({
 
 /** Double-Entry Ledger Accounts */
 export const LEDGER_ACCOUNT = Object.freeze({
+  GATEWAY_EXTERNAL: 'GATEWAY_EXTERNAL',
   CONTRACTOR_WALLET: 'CONTRACTOR_WALLET',
   ESCROW_HOLD: 'ESCROW_HOLD',
   WORKER_WALLET: 'WORKER_WALLET',
   PLATFORM_FEE: 'PLATFORM_FEE',
-  REFUND: 'REFUND',
+  PAYOUT_EXTERNAL: 'PAYOUT_EXTERNAL',
+});
+
+/** Payment Order Status (Top-ups) */
+export const PAYMENT_ORDER_STATUS = Object.freeze({
+  CREATED: 'CREATED',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  EXPIRED: 'EXPIRED',
+});
+
+/** Payment Providers */
+export const PAYMENT_PROVIDER = Object.freeze({
+  MOCK: 'mock',
+  RAZORPAY: 'razorpay',
+});
+
+/** Payout Status */
+export const PAYOUT_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+});
+
+/** Payout Types */
+export const PAYOUT_TYPE = Object.freeze({
+  AUTO_RELEASE: 'AUTO_RELEASE',
+  WITHDRAWAL: 'WITHDRAWAL',
+});
+
+/** Dispute Opened From Enum */
+export const DISPUTE_OPENED_FROM = Object.freeze({
+  CONTRACTOR_SIGNOFF: 'CONTRACTOR_SIGNOFF',
+  WORKER_CLAIM: 'WORKER_CLAIM',
 });
 
 /** Rating Types */

@@ -20,8 +20,8 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0,
       validate: {
-        validator: Number.isInteger,
-        message: '{VALUE} is not an integer value in paise',
+        validator: Number.isSafeInteger,
+        message: '{VALUE} is not a safe integer value in paise',
       },
     },
     lockedPaise: {
@@ -30,9 +30,13 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0,
       validate: {
-        validator: Number.isInteger,
-        message: '{VALUE} is not an integer value in paise',
+        validator: Number.isSafeInteger,
+        message: '{VALUE} is not a safe integer value in paise',
       },
+    },
+    version: {
+      type: Number,
+      default: 0,
     },
     currency: {
       type: String,
@@ -47,6 +51,7 @@ const walletSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    versionKey: '__v',
   },
 );
 

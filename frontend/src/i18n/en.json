@@ -26,6 +26,26 @@
   "signoff_pending": "Sign-off Pending",
   "signoff_approved": "Approved",
   "signoff_disputed": "Disputed",
-  "auto_checkout": "Auto Check-out"
+  "auto_checkout": "Auto Check-out",
+  "wallet": "Wallet",
+  "available_balance": "Available Balance",
+  "locked_in_escrow": "Locked in Escrow",
+  "add_money": "Add Money",
+  "withdraw_upi": "Withdraw to UPI",
+  "today_earnings": "Today's Earnings",
+  "pending_escrow": "Pending Escrow",
+  "fund_job": "Lock Funds in Escrow",
+  "funding_status": "Funding Status",
+  "shortfall_notice": "Insufficient Balance. Please top up your wallet.",
+  "raise_dispute": "Raise Dispute",
+  "dispute_reason": "Dispute Reason",
+  "dispute_status_open": "Under Review",
+  "dispute_resolved": "Resolved",
+  "reconciliation_title": "Financial Reconciliation",
+  "dev_tools": "Dev Sandbox",
+  "upi_id": "UPI ID",
+  "update_upi": "Update UPI",
+  "escrow_released": "Paid & Released",
+  "escrow_funded": "Funded & Guaranteed"
 }
 

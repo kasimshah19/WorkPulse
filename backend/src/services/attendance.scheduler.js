@@ -20,6 +20,9 @@ import {
 } from '../utils/time.js';
 import clock from '../utils/clock.js';
 import { getIO } from '../sockets/index.js';
+import EscrowTransaction from '../models/EscrowTransaction.js';
+import { ESCROW_STATUS } from '../config/constants.js';
+import { onCheckOut, refund, transition } from './escrow.service.js';
 
 let schedulerInterval = null;
 
@@ -99,6 +102,9 @@ export async function autoCheckoutForgotten() {
           io.to(`user:${job.contractor}`).emit('attendance:checkedOut', payload);
           io.to(`job:${job._id}`).emit('attendance:checkedOut', payload);
         }
+
+        // Trigger Escrow transition: CHECKED_IN -> CHECKED_OUT
+        await onCheckOut(updated);
       }
     }
   }
@@ -181,7 +187,24 @@ export async function markMissed() {
             });
           }
 
-          // TODO(Phase 5): Trigger automatic escrow refund for this day
+          // Trigger automatic escrow refund for this day (Phase 5)
+          const dayEscrow = await EscrowTransaction.findOne({
+            job: job._id,
+            worker: app.worker,
+            dayDate: todayDate,
+          });
+
+          if (dayEscrow) {
+            if (dayEscrow.status === ESCROW_STATUS.FUNDED) {
+              await refund(dayEscrow._id, null, 'system', 'Worker no-show auto refund', ESCROW_STATUS.REFUNDED);
+            } else if (dayEscrow.status === ESCROW_STATUS.CREATED) {
+              await transition(dayEscrow._id, ESCROW_STATUS.CANCELLED, {
+                actor: null,
+                actorRole: 'system',
+                reason: 'Worker no-show on unfunded day',
+              });
+            }
+          }
         } catch (err) {
           // Ignore duplicate key race conditions
           if (err.code !== 11000) {

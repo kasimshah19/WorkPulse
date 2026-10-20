@@ -1,6 +1,7 @@
 import fs from 'fs';
 import Attendance from '../models/Attendance.js';
 import Job from '../models/Job.js';
+import Dispute from '../models/Dispute.js';
 import {
   checkIn,
   checkOut,
@@ -219,12 +220,21 @@ export async function getAttendanceSelfie(req, res, next) {
       return res.status(404).json(apiResponse.error('NOT_FOUND', 'Selfie not found for this attendance.'));
     }
 
-    // Access control: Worker who owns it, the job contractor, and admin
+    // Access control: Worker who owns it, the job contractor, dispute participants, and admin
     const isWorkerOwner = String(attendance.worker) === String(req.user._id);
     const isContractorOwner = String(attendance.job?.contractor) === String(req.user._id);
     const isAdmin = req.user.role === 'admin';
 
+    let isDisputeParticipant = false;
     if (!isWorkerOwner && !isContractorOwner && !isAdmin) {
+      const dispute = await Dispute.findOne({
+        $or: [{ raisedBy: req.user._id }, { against: req.user._id }],
+        'evidence.refId': String(attendance._id),
+      });
+      isDisputeParticipant = !!dispute;
+    }
+
+    if (!isWorkerOwner && !isContractorOwner && !isAdmin && !isDisputeParticipant) {
       return res.status(403).json(apiResponse.error('FORBIDDEN', 'Access denied to view this selfie.'));
     }
 

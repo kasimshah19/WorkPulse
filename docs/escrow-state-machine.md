@@ -118,105 +118,198 @@ if (!updated) {
 
 ## 4. Double-Entry Ledger Bookkeeping Examples
 
-All ledger transactions are append-only. Each economic event has a matching pair of **DEBIT** and **CREDIT** entries sharing a unique `groupId`.
+## 4. Double-Entry Ledger Bookkeeping Templates
 
-### Scenario 1: Contractor Funds 1 Day Escrow (₹800 = 80,000 Paise)
-- Contractor locks funds into platform escrow hold.
-- **groupId:** `GRP_FUND_20261018_001`
+All ledger transactions are strictly append-only. Each economic event has a matching set of **DEBIT** and **CREDIT** entries sharing a deterministic, unique `groupId`.
+
+### 1. TOPUP (`TOPUP:<paymentId>`)
+- Contractor adds funds to their wallet via Razorpay / Mock gateway (₹5,000 = 500,000 Paise).
+- **groupId:** `TOPUP:pay_mock_12345`
 
 ```
+Entry 0:
+  Account:       GATEWAY_EXTERNAL
+  EntryType:     DEBIT
+  AmountPaise:   500000
+  Wallet:        null
+  BalanceAfter:  0
+  Description:   "Contractor wallet top-up via gateway"
+
 Entry 1:
+  Account:       CONTRACTOR_WALLET
+  EntryType:     CREDIT
+  AmountPaise:   500000
+  Wallet:        Wallet_Contractor_01
+  BalanceAfter:  500000
+  Description:   "Contractor wallet credited with top-up"
+```
+*Invariant:* $\sum \text{DEBIT} (500,000) == \sum \text{CREDIT} (500,000)$.
+
+---
+
+### 2. FUND (`FUND:<txId>`)
+- Contractor locks money in escrow for 1 worker shift (₹800 = 80,000 Paise).
+- **groupId:** `FUND:6ad6f48f017febc154631683`
+
+```
+Entry 0:
   Account:       CONTRACTOR_WALLET
   EntryType:     DEBIT
   AmountPaise:   80000
   Wallet:        Wallet_Contractor_01
-  Description:   "Locked daily wage for Job #101, Worker #502"
+  BalanceAfter:  420000 (usable available balance drops)
+  Description:   "Locked daily wage in escrow for worker Ramesh"
 
-Entry 2:
+Entry 1:
   Account:       ESCROW_HOLD
   EntryType:     CREDIT
   AmountPaise:   80000
-  Wallet:        Platform_Escrow_Pool
-  Description:   "Escrow hold secured for Job #101, Worker #502"
+  Wallet:        Wallet_Contractor_01
+  BalanceAfter:  80000 (contractor locked balance increases)
+  Description:   "Escrow hold secured for worker Ramesh"
 ```
-*Net Invariant: DEBIT (80,000) == CREDIT (80,000)*
+*Invariant:* $\sum \text{DEBIT} (80,000) == \sum \text{CREDIT} (80,000)$.
 
 ---
 
-### Scenario 2: Normal Shift Completed & Released to Worker (₹800 = 80,000 Paise)
-- Shift completed, contractor approves signoff.
-- **groupId:** `GRP_REL_20261018_002`
+### 3. RELEASE (`RELEASE:<txId>`)
+- Shift completed & approved. Escrow released to worker wallet. (₹800 = 80,000 Paise with optional 5% platform fee = 4,000 Paise).
+- **groupId:** `RELEASE:6ad6f48f017febc154631683`
 
 ```
-Entry 1:
+Entry 0:
   Account:       ESCROW_HOLD
   EntryType:     DEBIT
   AmountPaise:   80000
-  Wallet:        Platform_Escrow_Pool
-  Description:   "Escrow release for Job #101, Worker #502"
+  Wallet:        Wallet_Contractor_01
+  BalanceAfter:  0 (contractor locked balance drops)
+  Description:   "Escrow hold released for worker Ramesh"
 
-Entry 2:
+Entry 1:
   Account:       WORKER_WALLET
   EntryType:     CREDIT
-  AmountPaise:   80000
-  Wallet:        Wallet_Worker_502
-  Description:   "Daily wage credited for Job #101 (Date: 2026-10-18)"
+  AmountPaise:   76000 (Amount minus fee)
+  Wallet:        Wallet_Worker_01
+  BalanceAfter:  76000
+  Description:   "Shift wage credited to worker"
+
+Entry 2 (only if PLATFORM_FEE_PERCENT > 0):
+  Account:       PLATFORM_FEE
+  EntryType:     CREDIT
+  AmountPaise:   4000
+  Wallet:        null
+  BalanceAfter:  0
+  Description:   "Platform facilitation fee on wage"
 ```
-*Worker wallet balance increases by ₹800.00.*
+*Invariant:* $\text{DEBIT } (80,000) == \text{CREDIT } (76,000 + 4,000 = 80,000)$.
 
 ---
 
-### Scenario 3: Worker No-Show / Shift Cancelled (₹800 Full Refund)
-- Escrow refunded back to contractor.
-- **groupId:** `GRP_REF_20261018_003`
+### 4. REFUND (`REFUND:<txId>`)
+- Worker no-show (MISSED) or shift cancelled before check-in. Held funds returned to contractor wallet.
+- **groupId:** `REFUND:6ad6f48f017febc154631683`
 
 ```
-Entry 1:
+Entry 0:
   Account:       ESCROW_HOLD
   EntryType:     DEBIT
   AmountPaise:   80000
-  Wallet:        Platform_Escrow_Pool
-  Description:   "Escrow refund reversal for Job #101"
+  Wallet:        Wallet_Contractor_01
+  BalanceAfter:  0 (locked balance drops)
+  Description:   "Escrow hold refunded to contractor"
+
+Entry 1:
+  Account:       CONTRACTOR_WALLET
+  EntryType:     CREDIT
+  AmountPaise:   80000
+  Wallet:        Wallet_Contractor_01
+  BalanceAfter:  500000 (available balance restored)
+  Description:   "Refund of escrow hold for unperformed shift"
+```
+*Invariant:* $\sum \text{DEBIT} (80,000) == \sum \text{CREDIT} (80,000)$.
+
+---
+
+### 5. SPLIT (`SPLIT:<disputeId>`)
+- Admin arbitrates dispute with partial settlement: ₹500 (50,000 Paise) to Worker, ₹300 (30,000 Paise) refund to Contractor.
+- **groupId:** `SPLIT:6ad6f49d44712b52aa47cabf`
+
+```
+Entry 0:
+  Account:       ESCROW_HOLD
+  EntryType:     DEBIT
+  AmountPaise:   80000
+  Wallet:        Wallet_Contractor_01
+  BalanceAfter:  0
+  Description:   "Dispute split resolution: hold relief"
+
+Entry 1:
+  Account:       WORKER_WALLET
+  EntryType:     CREDIT
+  AmountPaise:   50000
+  Wallet:        Wallet_Worker_01
+  BalanceAfter:  50000
+  Description:   "Dispute arbitrated wage payout"
 
 Entry 2:
   Account:       CONTRACTOR_WALLET
   EntryType:     CREDIT
-  AmountPaise:   80000
+  AmountPaise:   30000
   Wallet:        Wallet_Contractor_01
-  Description:   "Escrow refund for worker no-show / cancellation"
+  BalanceAfter:  450000
+  Description:   "Dispute arbitrated contractor refund"
 ```
-*Contractor locked balance cleared; usable balance restored.*
+*Invariant:* $\text{DEBIT } (80,000) == \text{CREDIT } (50,000 + 30,000 = 80,000)$. Sum of worker amount and contractor refund must equal escrow amount exactly.
 
 ---
 
-### Scenario 4: Admin Split Resolution on Dispute (50% Worker / 50% Contractor)
-- Total Escrow: ₹800 (80,000 paise).
-- Worker gets ₹400 (40,000 paise); Contractor gets refunded ₹400 (40,000 paise).
-- **groupId:** `GRP_SPLIT_20261018_004`
+### 6. PAYOUT (`PAYOUT:<payoutId>`)
+- Worker receives simulated UPI payout to their bank account (₹760 = 76,000 Paise).
+- **groupId:** `PAYOUT:6ad6f4a21147febc154631683`
 
 ```
-Entry 1 (Escrow Hold Relief):
-  Account:       ESCROW_HOLD
+Entry 0:
+  Account:       WORKER_WALLET
   EntryType:     DEBIT
-  AmountPaise:   80000
-  Wallet:        Platform_Escrow_Pool
-  Description:   "Dispute split resolution for Escrow #TRX_99"
+  AmountPaise:   76000
+  Wallet:        Wallet_Worker_01
+  BalanceAfter:  0
+  Description:   "Worker UPI payout transfer"
 
-Entry 2 (Worker Credit):
+Entry 1:
+  Account:       PAYOUT_EXTERNAL
+  EntryType:     CREDIT
+  AmountPaise:   76000
+  Wallet:        null
+  BalanceAfter:  0
+  Description:   "Dispatched to bank/UPI network"
+```
+*Invariant:* $\sum \text{DEBIT} (76,000) == \sum \text{CREDIT} (76,000)$.
+
+---
+
+### 7. PAYOUT_REVERSAL (`PAYOUT_REVERSAL:<payoutId>`)
+- Bank rejects UPI payout (e.g., invalid VPA or network failure). Funds restored to worker wallet.
+- **groupId:** `PAYOUT_REVERSAL:6ad6f4a21147febc154631683`
+
+```
+Entry 0:
+  Account:       PAYOUT_EXTERNAL
+  EntryType:     DEBIT
+  AmountPaise:   76000
+  Wallet:        null
+  BalanceAfter:  0
+  Description:   "Reversal of failed UPI transfer"
+
+Entry 1:
   Account:       WORKER_WALLET
   EntryType:     CREDIT
-  AmountPaise:   40000
-  Wallet:        Wallet_Worker_502
-  Description:   "Dispute partial settlement credit (50%)"
-
-Entry 3 (Contractor Refund Credit):
-  Account:       CONTRACTOR_WALLET
-  EntryType:     CREDIT
-  AmountPaise:   40000
-  Wallet:        Wallet_Contractor_01
-  Description:   "Dispute partial settlement refund (50%)"
+  AmountPaise:   76000
+  Wallet:        Wallet_Worker_01
+  BalanceAfter:  76000
+  Description:   "Restored failed payout to worker wallet"
 ```
-*Net Invariant: Total DEBIT (80,000) == Total CREDIT (40,000 + 40,000 = 80,000).*
+*Invariant:* $\sum \text{DEBIT} (76,000) == \sum \text{CREDIT} (76,000)$.
 
 ---
 

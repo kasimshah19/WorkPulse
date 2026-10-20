@@ -18,6 +18,7 @@ const escrowTransactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Attendance',
       default: null,
+      index: true,
     },
     contractor: {
       type: mongoose.Schema.Types.ObjectId,
@@ -36,8 +37,8 @@ const escrowTransactionSchema = new mongoose.Schema(
       required: true,
       min: 0,
       validate: {
-        validator: Number.isInteger,
-        message: '{VALUE} is not an integer value in paise',
+        validator: Number.isSafeInteger,
+        message: '{VALUE} is not a safe integer value in paise',
       },
     },
     platformFeePaise: {
@@ -45,8 +46,8 @@ const escrowTransactionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
       validate: {
-        validator: Number.isInteger,
-        message: '{VALUE} must be an integer',
+        validator: Number.isSafeInteger,
+        message: '{VALUE} must be a safe integer',
       },
     },
     status: {
@@ -60,7 +61,7 @@ const escrowTransactionSchema = new mongoose.Schema(
         from: { type: String, required: true },
         to: { type: String, required: true },
         at: { type: Date, default: Date.now },
-        by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
         reason: { type: String, default: '' },
       },
     ],
@@ -76,6 +77,10 @@ const escrowTransactionSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    payoutStatus: {
+      type: String,
+      default: null,
+    },
     idempotencyKey: {
       type: String,
       required: true,
@@ -88,13 +93,22 @@ const escrowTransactionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    refundedAt: {
+      type: Date,
+      default: null,
+    },
     dayDate: {
       type: String, // YYYY-MM-DD
       required: true,
     },
+    version: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
+    versionKey: '__v',
   },
 );
 
@@ -102,6 +116,8 @@ const escrowTransactionSchema = new mongoose.Schema(
 escrowTransactionSchema.index({ idempotencyKey: 1 }, { unique: true });
 escrowTransactionSchema.index({ job: 1, worker: 1, dayDate: 1 }, { unique: true });
 escrowTransactionSchema.index({ status: 1, autoApprovalAt: 1 });
+escrowTransactionSchema.index({ contractor: 1, status: 1 });
+escrowTransactionSchema.index({ worker: 1, status: 1 });
 
 const EscrowTransaction = mongoose.model(
   'EscrowTransaction',
