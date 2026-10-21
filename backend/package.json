@@ -13,6 +13,7 @@
     "seed:attendance": "node src/scripts/seedAttendance.js",
     "seed:escrow": "node src/scripts/seedEscrow.js",
     "seed:onboarding": "node src/scripts/seedOnboarding.js",
+    "seed:safety": "node src/scripts/seedSafety.js",
     "backfill:escrow": "node src/scripts/backfillEscrow.js",
     "reconcile": "node src/scripts/reconcile.js",
     "lint": "eslint src/",

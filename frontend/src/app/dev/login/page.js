@@ -100,6 +100,13 @@ export default function DevLoginPage() {
           {users.map((u) => {
             const isContractor = u.role === 'contractor';
             const isAdmin = u.role === 'admin';
+            let roleNote = '';
+            if (u.phone === '+919000000001') roleNote = 'Phase 7 W1 (Rater / SOS Reporter)';
+            else if (u.phone === '+919000000002') roleNote = 'Phase 7 W2 (Coworker Responder)';
+            else if (u.phone === '+919000000008') roleNote = 'Phase 7 W8 (Available Worker)';
+            else if (u.phone === '+919000000100') roleNote = 'Phase 7 Contractor (Employer)';
+            else if (u.phone === '+919000000900') roleNote = 'Phase 7 Admin (Safety & Arbitrator)';
+
             return (
               <div
                 key={u._id}
@@ -143,7 +150,7 @@ export default function DevLoginPage() {
                     </div>
 
                     <p className="text-xs text-slate-400 font-mono">
-                      {u.phone} • {isAdmin ? 'Arbitration Admin' : (u.skills?.join(', ') || (isContractor ? 'Thekedaar' : 'No Skill'))}
+                      {u.phone} • {roleNote || (isAdmin ? 'Arbitration Admin' : (u.skills?.join(', ') || (isContractor ? 'Thekedaar' : 'No Skill')))}
                     </p>
                   </div>
                 </div>

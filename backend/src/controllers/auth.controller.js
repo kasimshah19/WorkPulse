@@ -42,10 +42,13 @@ export const serializeUser = (user) => {
   const userObj = user.toObject ? user.toObject() : { ...user };
   delete userObj.__v;
 
+  const hasEmergencyContact = Boolean(user.emergencyContact?.phone);
+
   return {
     ...userObj,
     id: user._id || user.id,
     profileComplete,
+    hasEmergencyContact,
   };
 };
 
@@ -191,7 +194,11 @@ export const verifyOtp = async (req, res) => {
  * GET /api/v1/auth/me
  */
 export const getMe = async (req, res) => {
-  return sendSuccess(res, 200, serializeUser(req.user));
+  const serialized = serializeUser(req.user);
+  return sendSuccess(res, 200, {
+    ...serialized,
+    user: serialized,
+  });
 };
 
 /**

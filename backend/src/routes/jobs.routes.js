@@ -19,6 +19,7 @@ import {
 } from '../controllers/jobs.controller.js';
 import { fundJobEscrow, getJobFundingQuote } from '../controllers/escrow.controller.js';
 import { jobAttendanceRouter } from './attendance.routes.js';
+import { getJobIncidentsHandler } from '../controllers/incidents.controller.js';
 
 const router = Router();
 
@@ -78,6 +79,7 @@ router.post('/:id/cancel', role('contractor'), asyncHandler(cancelJob));
 router.post('/:id/fund', role('contractor'), asyncHandler(fundJobEscrow));
 router.get('/:id/funding-quote', role('contractor', 'admin'), asyncHandler(getJobFundingQuote));
 router.get('/:id/applicants', role('contractor', 'admin'), asyncHandler(getJobApplicants));
+router.get('/:id/incidents', role('contractor', 'admin'), asyncHandler(getJobIncidentsHandler));
 
 // Worker routes
 router.get('/nearby', role('worker'), asyncHandler(getNearbyJobs));

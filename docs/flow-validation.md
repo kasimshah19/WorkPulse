@@ -89,23 +89,31 @@ This document validates the completeness and integrity of the WorkPulse system s
 
 ---
 
-## Flow 8: Emergency SOS Alert During Active Work
+## Flow 8: Emergency SOS Alert During Active Work (Re-validated Phase 7)
 
-| Step | Action & User Interaction | Screen | API Endpoint | Collections Touched | State Change |
+| Step | Action & User Interaction | Screen | API Endpoint | Collections Touched | State Change & Data Integrity |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 8.1 | Worker taps persistent red SOS button on site | Screen W4 | `POST /incidents/sos` | `incidents` | Incident created with `type: SOS`, `severity: CRITICAL` |
-| 8.2 | Backend identifies job contractor & nearest workers | Background | Socket `sos:alert` | `incidents`, `notifications` | `alertedUsers` array populated; Contractor phone dialed via SMS |
-| 8.3 | Contractor & Emergency responder acknowledge alert | Screen C3 | Socket `sos:ack` | `incidents` | Incident updated to `ACKNOWLEDGED` with responder user ID |
+| 8.1 | Worker presses & holds `<SosButton>` for 2s (progress ring + vibration pulses) | Screen S1 | Client timer state | None (client memory) | Accidental taps prevented. 5-second cancel overlay triggered. |
+| 8.2 | 5-second countdown overlay with optional "Contractor ko bhi batayein" toggle | Screen S2 | Client countdown | None | Worker can cancel before send. Can uncheck contractor if contractor is the threat. |
+| 8.3 | Countdown ends; PWA dispatches SOS (with 4s GPS timeout fallback) | Screen S3 | `POST /incidents/sos` | `incidents`, `notifications` | Incident created (`type: "SOS"`, `severity: "CRITICAL"`, `status: "OPEN"`). **Never fails on missing GPS (`locationFlag: MISSING`)**. Idempotency key deduplicates network retries. |
+| 8.4 | Instant multi-channel alert dispatch | Device / Sockets | Sockets & SMS | `incidents` | Socket `sos:alert` to Contractor, same-job Coworkers, Admins. SMS to Emergency Contact with Google Maps link. |
+| 8.5 | Background location breadcrumbs stream every 15s | Screen S3 | `POST /incidents/:id/location` | `incidents` | Appends to `locationTrail` (capped at 50, min 5s interval). Responders receive `sos:location` live updates. |
+| 8.6 | Escalation scheduler fires if unacknowledged | System Cron | Safety Scheduler | `incidents` | At 60s: `escalationLevel: 1`, timeline `ESCALATED_1`, re-sends SMS with latest map link. At 300s: `escalationLevel: 2`. |
+| 8.7 | Alerted responder acknowledges | Screen S4 | `POST /incidents/:id/acknowledge` | `incidents`, `notifications` | Status `OPEN` -> `ACKNOWLEDGED`. Reporter notified via socket `sos:acknowledged`. |
+| 8.8 | Worker reaches safety and resolves | Screen S3 | `POST /incidents/:id/resolve` | `incidents`, `auditlogs` | Status -> `RESOLVED` (`resolutionType: "SELF_SAFE"`). Socket `sos:resolved`. Immutable timeline stamped. |
 
 ---
 
-## Flow 9: Two-Way Rating After Shift Completion
+## Flow 9: Two-Way Rating After Shift Completion (Re-validated Phase 7)
 
-| Step | Action & User Interaction | Screen | API Endpoint | Collections Touched | State Change |
+| Step | Action & User Interaction | Screen | API Endpoint | Collections Touched | State Change & Data Integrity |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 9.1 | Escrow reaches terminal state `RELEASED` | System | Post-payment trigger | `notifications` | Both parties prompted to submit review |
-| 9.2 | Contractor rates worker 5 stars for skill | Screen C3 | `POST /ratings` | `ratings`, `users` | Rating created (`WORKER_SKILL`). Worker `ratingSummary.workerSkillAvg` recalculated. |
-| 9.3 | Worker rates contractor 5 stars for safety & timely pay | Screen W4 | `POST /ratings` | `ratings`, `users` | Rating created (`CONTRACTOR_PAYMENT`). Contractor `ratingSummary.contractorPaymentAvg` recalculated. |
+| 9.1 | Job completed or end date passed; Safety scheduler creates prompts | Background | Safety Scheduler | `notifications` | Schedulers create `RATING_REQUEST` with dedupe key `RATING_REQ:<jobId>:<userId>:<counterpartyId>`. |
+| 9.2 | Contractor rates worker's trade skill (1-5 stars + tags + comment) | Screen R2 | `POST /ratings` | `ratings`, `auditlogs` | Eligibility verified (worker has >= 1 `CHECKED_OUT`). Rating created with `revealedAt: null`. **Remains blind.** |
+| 9.3 | Worker checks profile / received ratings | Screen W4 | `GET /ratings/received` | None | **Zero data leak**: Unrevealed ratings omitted; recipient cannot see contractor's rating or score. |
+| 9.4 | Worker rates contractor on Payment and Safety | Screen R1 | `POST /ratings` | `ratings`, `auditlogs` | Eligibility verified (settled escrow row exists). Rating created. |
+| 9.5 | Atomic Double-Blind Reveal & Bayesian Smoothing | Backend | `revealIfReady()` | `ratings`, `users`, `notifications` | Both sides rated -> `revealedAt: now()`. Idempotent recalculation updates `users.ratingSummary` using Bayesian formula $(3 \times 4.0 + \sum R) / (3 + N)$. Socket `rating:revealed`. |
+| 9.6 | Public Reputation Scorecard viewable | Profile / Job | `GET /users/:id/reputation` | None (read aggregation) | Displays smoothed score, badge (`NEW`/`GOOD`/`OK`/`LOW`), top tags, and escrow-backed objective payment stats. |
 
 ---
 
@@ -122,20 +130,28 @@ This document validates the completeness and integrity of the WorkPulse system s
 
 ## 11. Gaps Discovered and Fixed
 
-During the validation of the 10 flows, the following three architectural gaps were identified and resolved across the specification:
+During the validation of the 10 flows, the following architectural gaps were identified and resolved across the specification:
 
-1. **Gap 1: Offline Worker Sign-off on Site**
-   - *Problem*: In Flow 10, workers lacking cellular data could not submit GPS coordinates and selfie check-outs.
-   - *Fix*: Added `qrToken` and `method: "gps_qr"` into `attendances` collection and created a contractor on-site verification endpoint `POST /attendance/contractor-verify` where the contractor's device captures the GPS coordinates and scans the worker's unique offline QR code.
+1. **Gap 1: Retaliatory Ratings in Direct Contracting**
+   - *Problem*: In traditional platforms, workers hesitate to report delayed pay or safety violations because contractors immediately leave a 1-star retaliatory review.
+   - *Fix (Phase 7)*: Implemented a strict **Double-Blind Rating** mechanism (`revealedAt: null`). Neither party can inspect the other's score until both have rated or the 14-day window closes.
 
-2. **Gap 2: Split Escrow Ledger Invariant**
+2. **Gap 2: Small Sample Rating Inflation / Deflation**
+   - *Problem*: A single 5-star rating gave a new worker a 5.0 score, ranking them above a veteran with forty 4.8-star jobs.
+   - *Fix (Phase 7)*: Implemented **Bayesian Smoothing** with prior parameters $C=3$ and $M=4.0$. Aggregate score $= (3 \times 4.0 + \sum R) / (3 + N)$, and workers with $<3$ ratings are badged as `NEW`.
+
+3. **Gap 3: Emergency SOS Failure from GPS Dropout or Network Glitches**
+   - *Problem*: In basement sites or remote areas, strict GPS validation would reject SOS requests, or rapid panicked double-taps would trigger duplicate incidents.
+   - *Fix (Phase 7)*: Guaranteed SOS execution with zero location prerequisites (`locationFlag: MISSING` / `STALE`). Client assigns a persistent UUID `idempotencyKey` per SOS, and server dedupes requests within 120 seconds. Offline client renders fallback `sms:` and `tel:112` links.
+
+4. **Gap 4: Safety Reporting Against an Abusive Contractor**
+   - *Problem*: If a worker is harassed by the site contractor, alerting the contractor about an SOS or incident escalates danger.
+   - *Fix (Phase 7)*: Added `notifyContractor: false` toggle on SOS, and established strict `ADMIN_ONLY` visibility for `HARASSMENT` and `DISPUTE` reports so contractors never receive notifications or access to those complaints.
+
+5. **Gap 5: Split Escrow Ledger Invariant**
    - *Problem*: In Flow 5, a split dispute settlement required distributing the locked escrow between two different recipient wallets (`WORKER_WALLET` and `CONTRACTOR_WALLET`), which could cause double-entry validation errors if not linked.
    - *Fix*: Standardized the multi-legged ledger entry structure with a single shared `groupId` and validated that the sum of debits (85,000 paise from `ESCROW_HOLD`) exactly equals the sum of credits (42,500 to worker + 42,500 to contractor).
 
-3. **Gap 3: Atomic Replay Protection on Auto-Approval**
-   - *Problem*: Concurrent execution of system cron and manual contractor signoff could result in dual payouts.
-   - *Fix*: Mandated atomic conditional updates (`findOneAndUpdate({ _id, status: "CHECKED_OUT" })`) ensuring only the first caller transitions the status.
-
 ---
 
-**All 10 flows pass on paper.**
+**All 10 flows pass on paper and in code.**

@@ -496,58 +496,75 @@ erDiagram
 ---
 
 ### 3.9 `ratings`
-**Purpose**: Two-way reputation reviews between workers and contractors.
+**Purpose**: Double-blind, two-way reputation reviews between workers and contractors with Bayesian smoothing.
 
 | Field Name | Type | Required | Default | Notes |
 |---|---|---|---|---|
 | `_id` | ObjectId | Yes | auto | Primary Key |
-| `job` | ObjectId | Yes | - | Ref: `Job` |
-| `fromUser` | ObjectId | Yes | - | Ref: `User` (Reviewer) |
-| `toUser` | ObjectId | Yes | - | Ref: `User` (Recipient) |
-| `type` | String | Yes | - | Enum: `WORKER_SKILL`, `CONTRACTOR_PAYMENT`, `CONTRACTOR_SAFETY` |
-| `score` | Number | Yes | - | Integer from 1 to 5 |
-| `comment` | String | No | `""` | Feedback text (max: 500 chars) |
-| `isHidden` | Boolean | Yes | `false` | Moderation flag |
+| `job` | ObjectId | Yes | - | Ref: `Job` (Immutable) |
+| `fromUser` | ObjectId | Yes | - | Ref: `User` (Reviewer, Immutable) |
+| `toUser` | ObjectId | Yes | - | Ref: `User` (Recipient, Immutable) |
+| `type` | String | Yes | - | Enum: `WORKER_SKILL`, `CONTRACTOR_PAYMENT`, `CONTRACTOR_SAFETY` (Immutable) |
+| `score` | Number | Yes | - | Integer 1 to 5 (Immutable) |
+| `tags` | [String] | No | `[]` | Enum catalog tags (max 4) |
+| `comment` | String | No | `""` | Feedback text (max: 300 chars, stripped of HTML) |
+| `revealedAt` | Date | No | `null` | Null during blind window; set when both sides rate or window closes |
+| `isHidden` | Boolean | Yes | `false` | Moderation hide flag |
+| `hiddenBy` | ObjectId | No | `null` | Ref: `User` (Admin who hid rating) |
+| `hiddenReason` | String | No | `""` | Mandatory reason for hiding (min 5 chars) |
+| `hiddenAt` | Date | No | `null` | Timestamp when hidden |
+| `reportedByRecipient`| Boolean | Yes | `false` | Flag if rated recipient reported unfair |
+| `reportReason` | String | No | `""` | Recipient unfairness reason |
 | `createdAt` | Date | Yes | auto | Creation timestamp |
 | `updatedAt` | Date | Yes | auto | Update timestamp |
 
 * **Indexes**:
-  * `{ job: 1, fromUser: 1, toUser: 1, type: 1 }` (Unique: Prevents double rating per category)
-  * `{ toUser: 1, score: 1 }`
-* **Example JSON**:
-```json
-{
-  "_id": "671230000000000000000010",
-  "job": "671230000000000000000004",
-  "fromUser": "671230000000000000000099",
-  "toUser": "671230000000000000000001",
-  "type": "WORKER_SKILL",
-  "score": 5,
-  "comment": "उत्कृष्ट कारीगरी और समय पर काम पूरा किया।",
-  "isHidden": false,
-  "createdAt": "2026-10-19T13:05:00.000Z",
-  "updatedAt": "2026-10-19T13:05:00.000Z"
-}
-```
+  * `{ job: 1, fromUser: 1, toUser: 1, type: 1 }` (Unique: Prevents duplicate rating per category)
+  * `{ toUser: 1, revealedAt: 1, isHidden: 1 }` (High efficiency reputation aggregate index)
+* **Immutability Guard**: `score`, `type`, `job`, `fromUser`, `toUser` are immutable after creation.
+* **Double-Blind Mechanism**: Created with `revealedAt = null`. Revealed when contractor rates worker skill AND worker rates contractor payment/safety, or when the 14-day window closes.
+* **Bayesian Smoothing**: Aggregate score = `(PRIOR_COUNT * PRIOR_MEAN + sum) / (PRIOR_COUNT + count)` where $C=3, M=4.0$.
 
 ---
 
 ### 3.10 `incidents`
-**Purpose**: Real-time safety incidents, injury reports, harassment logs, and emergency SOS alerts.
+**Purpose**: Immutable incident and emergency SOS audit logs, location trails, real-time alerts, and escalation timelines.
 
 | Field Name | Type | Required | Default | Notes |
 |---|---|---|---|---|
 | `_id` | ObjectId | Yes | auto | Primary Key |
-| `job` | ObjectId | Yes | - | Ref: `Job` |
+| `job` | ObjectId | No | `null` | Ref: `Job` (Optional context) |
 | `reportedBy` | ObjectId | Yes | - | Ref: `User` |
 | `type` | String | Yes | - | Enum: `SOS`, `INJURY`, `DISPUTE`, `HARASSMENT`, `OTHER` |
 | `severity` | String | Yes | `MEDIUM` | Enum: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` |
-| `location` | GeoJSON Point | No | - | GPS coordinates at time of incident |
-| `description` | String | No | `""` | Incident details |
-| `photos` | [String] | No | `[]` | Incident photo URLs |
+| `location` | GeoJSON Point | No | - | Latest GPS position `[longitude, latitude]` |
+| `locationFlag` | String | Yes | `OK` | Enum: `OK`, `STALE`, `MISSING` (SOS never fails for bad GPS) |
+| `locationTrail` | [Object] | No | `[]` | Breadcrumb array capped at 50: `[{ coordinates, accuracy, at }]` |
+| `description` | String | No | `""` | Incident details (min 10 chars for non-SOS) |
+| `photos` | [String] | No | `[]` | Secure stored photo paths (max 3, authenticated access only) |
 | `status` | String | Yes | `OPEN` | Enum: `OPEN`, `ACKNOWLEDGED`, `RESOLVED` |
-| `alertedUsers` | [Object] | No | `[]` | Embedded: `[{ user, channel, sentAt, ackAt }]` |
+| `escalationLevel`| Number | Yes | `0` | `0` (Normal), `1` (60s unack), `2` (300s unack) |
+| `idempotencyKey` | String | No | - | Unique per `reportedBy` sparse index for network retry tolerance |
+| `notifyContractor`| Boolean | Yes | `true` | Privacy toggle (set false if contractor poses the danger) |
+| `visibility` | String | Yes | `ALERTED_USERS` | Enum: `ALERTED_USERS`, `ADMIN_ONLY` (HARASSMENT/DISPUTE always ADMIN_ONLY) |
+| `jobContext` | String | Yes | `NONE` | Enum: `CHECKED_IN`, `ASSIGNED_TODAY`, `NONE` |
+| `accusedUser` | ObjectId | No | `null` | Ref: `User` (for harassment/dispute) |
+| `timeline` | [Object] | Yes | `[]` | Append-only event history: `[{ event, at, by, data }]` |
+| `alertedUsers` | [Object] | No | `[]` | Embedded: `[{ user, channel, sentAt, ackAt, deliveredAt, phone }]` |
+| `resolutionType`| String | No | `null` | Enum: `HELP_PROVIDED`, `FALSE_ALARM`, `SELF_SAFE`, `OTHER` |
+| `resolvedBy` | ObjectId | No | `null` | Ref: `User` |
 | `resolvedAt` | Date | No | `null` | Resolution timestamp |
+| `createdAt` | Date | Yes | auto | Incident report time |
+| `updatedAt` | Date | Yes | auto | Last update time |
+
+* **Indexes**:
+  * `{ reportedBy: 1, idempotencyKey: 1 }` (Sparse Unique)
+  * `{ status: 1, severity: 1, createdAt: -1 }`
+  * `{ reportedBy: 1, createdAt: -1 }`
+  * `{ job: 1, createdAt: -1 }`
+  * `{ type: 1, status: 1 }`
+  * `{ location: "2dsphere" }`
+* **Append-Only Invariant**: `timeline` and `locationTrail` are strictly append-only via conditional `$push`. Incidents cannot be deleted.
 | `resolutionNotes`| String | No | `""` | Actions taken |
 | `createdAt` | Date | Yes | auto | Creation timestamp |
 | `updatedAt` | Date | Yes | auto | Update timestamp |

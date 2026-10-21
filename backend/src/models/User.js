@@ -90,13 +90,19 @@ const userSchema = new mongoose.Schema(
     ratingSummary: {
       workerSkillAvg: { type: Number, default: 0, min: 0, max: 5 },
       workerSkillCount: { type: Number, default: 0 },
+      workerSkillScore: { type: Number, default: 0, min: 0, max: 5 },
       contractorPaymentAvg: { type: Number, default: 0, min: 0, max: 5 },
+      contractorPaymentCount: { type: Number, default: 0 },
+      contractorPaymentScore: { type: Number, default: 0, min: 0, max: 5 },
       contractorSafetyAvg: { type: Number, default: 0, min: 0, max: 5 },
-      contractorCount: { type: Number, default: 0 },
+      contractorSafetyCount: { type: Number, default: 0 },
+      contractorSafetyScore: { type: Number, default: 0, min: 0, max: 5 },
+      updatedAt: { type: Date, default: null },
     },
     emergencyContact: {
       name: { type: String, default: '' },
       phone: { type: String, default: '' },
+      verifiedNoticeSentAt: { type: Date, default: null },
     },
     fcmOrPushToken: {
       type: String,

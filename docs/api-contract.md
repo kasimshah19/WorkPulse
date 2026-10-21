@@ -88,6 +88,13 @@ All REST responses strictly follow the standardized envelope:
 | `502` | `STT_FAILED` | Upstream speech-to-text transcription engine failed |
 | `503` | `VOICE_UNAVAILABLE` | Voice service degraded or offline (carries fallback: "icons") |
 | `504` | `STT_TIMEOUT` | STT processing exceeded timeout limit |
+| `409` | `RATING_NOT_OPEN` | Job has not completed or endDate has not arrived yet |
+| `409` | `RATING_WINDOW_CLOSED` | Rating submission window has closed (14 days past job end) |
+| `409` | `ALREADY_RATED` | A rating of this type has already been submitted for this counterparty on this job |
+| `403` | `NOT_JOB_PARTICIPANT` | User was neither assigned worker nor contractor on this job |
+| `404` | `INCIDENT_NOT_FOUND` | Incident with given ID does not exist |
+| `409` | `INCIDENT_CLOSED` | Cannot update location or modify already resolved incident |
+| `403` | `NOT_ALERTED_USER` | Only alerted responders or admins can acknowledge or resolve an incident |
 | `429` | `RATE_LIMIT_EXCEEDED` | Too many requests within rate limit window |
 | `500` | `INTERNAL_SERVER_ERROR` | Unhandled server exception |
 
@@ -1103,15 +1110,103 @@ socket.on("payment:released", {
   releasedAt: "2026-10-20T18:30:00Z"
 });
 
-// 10. Emergency SOS Broadcast - Phase 7
+// 13. Emergency SOS Alert (to Contractor, Coworkers, Admins) - Phase 7
 socket.on("sos:alert", {
-  incidentId: "652c7890aa",
-  jobId: "652a9010ab34",
-  reportedBy: "Ramesh Kumar",
-  location: { type: "Point", coordinates: [73.8569, 18.5205] },
-  description: "Scaffolding collapsed"
+  incidentId: "671230000000000000000088",
+  reporter: { id: "671230000000000000000001", firstName: "Ramesh", phone: "+919000000001" },
+  jobId: "671230000000000000000004",
+  jobTitle: "Civil Construction",
+  location: { lat: 18.5204, lng: 73.8567 },
+  locationFlag: "OK",
+  accuracy: 12.5,
+  createdAt: "2026-10-21T18:00:00.000Z",
+  severity: "CRITICAL",
+  isEscalation: false
+});
+
+// 14. SOS Acknowledged Alert (to Reporter & Responders) - Phase 7
+socket.on("sos:acknowledged", {
+  incidentId: "671230000000000000000088",
+  byName: "Vikram Malhotra",
+  byRole: "contractor",
+  at: "2026-10-21T18:00:45.000Z"
+});
+
+// 15. SOS Live Location Update (to Alerted Rooms) - Phase 7
+socket.on("sos:location", {
+  incidentId: "671230000000000000000088",
+  lat: 18.5205,
+  lng: 73.8569,
+  accuracy: 9.0,
+  at: "2026-10-21T18:01:00.000Z"
+});
+
+// 16. SOS Escalated (to Admins & Responders) - Phase 7
+socket.on("sos:escalated", {
+  incidentId: "671230000000000000000088",
+  level: 1
+});
+
+// 17. SOS Resolved Alert (to Alerted Rooms) - Phase 7
+socket.on("sos:resolved", {
+  incidentId: "671230000000000000000088",
+  resolutionType: "SELF_SAFE"
+});
+
+// 18. Non-SOS Incident New Report (to Contractor & Admins) - Phase 7
+socket.on("incident:new", {
+  incidentId: "671230000000000000000089",
+  type: "INJURY",
+  severity: "HIGH",
+  jobId: "671230000000000000000004"
+});
+
+// 19. Rating Requested (to Worker & Contractor) - Phase 7
+socket.on("rating:requested", {
+  jobId: "671230000000000000000004",
+  counterpartyId: "671230000000000000000001",
+  types: ["CONTRACTOR_PAYMENT", "CONTRACTOR_SAFETY"]
+});
+
+// 20. Rating Revealed (to Recipient) - Phase 7
+socket.on("rating:revealed", {
+  jobId: "671230000000000000000004"
 });
 ```
+
+---
+
+## 3. Phase 7: Reputation, Emergency & Incident REST APIs
+
+### 3.1 Two-Way Ratings (`/ratings`)
+- `POST /ratings`: Submit rating `{ jobId, toUserId, type, score (1-5), tags[] (max 4), comment? (max 300) }`. Double-blind (`revealedAt: null`). Returns `201 Created`.
+- `GET /ratings/pending`: Rateable jobs/counterparties right now for current user.
+- `GET /ratings/mine/given?jobId=`: User's submitted ratings (including unrevealed with status `WAITING_FOR_OTHER_SIDE`).
+- `GET /ratings/received`: User's received revealed ratings with first-name attribution.
+- `GET /users/:id/reputation`: Public reputation scorecard `{ summary, topTags, recentComments, objectiveStats }`. No phone numbers exposed.
+- `POST /ratings/:id/report`: Recipient flags rating as unfair `{ reason }` for admin review.
+- `GET /admin/ratings`: Admin moderation queue `{ hidden?, reported? }`.
+- `POST /admin/ratings/:id/hide`: Admin hides rating with `{ reason }` (min 5 chars); triggers summary recalculation.
+- `POST /admin/ratings/:id/unhide`: Admin unhides rating.
+
+### 3.2 Emergency Contact (`/users/me/emergency-contact`)
+- `PATCH /users/me/emergency-contact`: Set emergency contact `{ name, phone (E.164) }`. Sends one verification notice SMS via provider mock/DLT template.
+
+### 3.3 Incidents & SOS (`/incidents`)
+- `POST /incidents/sos`: Trigger emergency SOS `{ lat?, lng?, accuracy?, locationAgeSec?, idempotencyKey, jobId?, notifyContractor? }`. Never fails on missing GPS or network duplicate. Dispatches SMS & Socket alerts.
+- `POST /incidents/:id/location`: Reporter updates breadcrumb trail `{ lat, lng, accuracy }`. Enforces 5s min interval & 50 points cap.
+- `POST /incidents/:id/acknowledge`: Alerted responder or admin acknowledges SOS.
+- `POST /incidents/:id/resolve`: Resolve SOS/incident `{ resolutionType, notes? }` (reporter can use `SELF_SAFE`).
+- `POST /incidents`: Non-SOS report (injury, harassment, dispute, other) with optional multipart photos (max 3, memory storage, magic bytes checked). `HARASSMENT` and `DISPUTE` are strictly `ADMIN_ONLY` (hidden from contractor).
+- `GET /incidents/my`: Reporter's incident history.
+- `GET /jobs/:id/incidents`: Contractor's job safety list (only `ALERTED_USERS` visibility).
+- `GET /incidents/:id`: Incident details with append-only timeline and location trail.
+- `GET /incidents/:id/photos/:index`: Secure photo serving.
+- `GET /admin/incidents`: Admin incident queue (SOS and CRITICAL prioritized).
+- `GET /admin/incidents/:id`: Full incident bundle with reporter context (past SOS and FALSE_ALARM counts).
+- `POST /admin/incidents/:id/note`: Append admin internal note.
+- `POST /admin/incidents/:id/resolve`: Admin resolve.
+- `GET /admin/safety/stats`: Comprehensive safety KPI dashboard.
 
 ---
 

@@ -42,6 +42,18 @@ const auditLogSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    details: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    targetModel: {
+      type: String,
+      default: null,
+    },
+    target: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -53,6 +65,18 @@ const auditLogSchema = new mongoose.Schema(
     timestamps: { createdAt: true, updatedAt: false }, // Only createdAt for append-only logs
   },
 );
+
+// Fallback hook for target / targetModel
+auditLogSchema.pre('validate', function (next) {
+  if (!this.entityType && (this.targetModel || this.get('targetModel'))) {
+    this.entityType = this.targetModel || this.get('targetModel');
+  }
+  if (!this.entityId && (this.target || this.get('target'))) {
+    const t = this.target || this.get('target');
+    this.entityId = t.toString();
+  }
+  next();
+});
 
 // Guard: Enforce append-only invariant
 auditLogSchema.pre('save', function (next) {

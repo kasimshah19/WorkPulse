@@ -10,6 +10,8 @@ import {
   updateLocation,
   updateAvailability,
   updateUPI,
+  updateEmergencyContact,
+  getUserReputation,
 } from '../controllers/users.controller.js';
 
 const router = Router();
@@ -27,6 +29,11 @@ const updateUpiSchema = Joi.object({
   upiId: Joi.string().required(),
 });
 
+const updateEmergencyContactSchema = Joi.object({
+  name: Joi.string().min(2).max(100).required(),
+  phone: Joi.string().required(),
+});
+
 const updateLocationSchema = Joi.object({
   lat: Joi.number().min(-90).max(90).required(),
   lng: Joi.number().min(-180).max(180).required(),
@@ -42,5 +49,7 @@ router.patch('/me', validate(updateMeSchema), asyncHandler(updateMe));
 router.patch('/me/location', validate(updateLocationSchema), asyncHandler(updateLocation));
 router.patch('/me/availability', role('worker'), validate(updateAvailabilitySchema), asyncHandler(updateAvailability));
 router.patch('/me/upi', validate(updateUpiSchema), asyncHandler(updateUPI));
+router.patch('/me/emergency-contact', role('worker'), validate(updateEmergencyContactSchema), asyncHandler(updateEmergencyContact));
+router.get('/:id/reputation', asyncHandler(getUserReputation));
 
 export default router;

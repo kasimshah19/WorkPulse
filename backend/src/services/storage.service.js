@@ -104,3 +104,54 @@ export function resolveSelfiePath(relativePath) {
 
   return resolved;
 }
+
+/**
+ * Saves a verified incident photo buffer to disk under UPLOAD_DIR/incidents/<incidentId>/<uuid>.jpg
+ * Stored outside any public folder.
+ *
+ * @param {Object} params
+ * @param {Buffer} params.buffer
+ * @param {string} params.incidentId
+ * @returns {Promise<{ relativePath: string, fullPath: string }>}
+ */
+export async function saveIncidentPhoto({ buffer, incidentId }) {
+  if (!isValidImageMagicBytes(buffer)) {
+    const error = new Error('INVALID_MAGIC_BYTES: File content is not a valid JPEG or PNG image.');
+    error.code = 'INVALID_MAGIC_BYTES';
+    throw error;
+  }
+
+  const safeIncidentId = String(incidentId).replace(/[^a-zA-Z0-9_-]/g, '');
+  const targetDir = path.resolve(env.uploadDir, 'incidents', safeIncidentId);
+
+  await fs.promises.mkdir(targetDir, { recursive: true });
+
+  const filename = `${crypto.randomUUID()}.jpg`;
+  const fullPath = path.join(targetDir, filename);
+
+  await fs.promises.writeFile(fullPath, buffer);
+
+  const relativePath = path.join('incidents', safeIncidentId, filename).replace(/\\/g, '/');
+
+  return { relativePath, fullPath };
+}
+
+/**
+ * Resolves a stored relative incident photo path to its full filesystem path.
+ * Guards against directory traversal.
+ *
+ * @param {string} relativePath
+ * @returns {string}
+ */
+export function resolveIncidentPhotoPath(relativePath) {
+  if (!relativePath) return null;
+  const baseUploadDir = path.resolve(env.uploadDir);
+  const resolved = path.resolve(baseUploadDir, relativePath);
+
+  if (!resolved.startsWith(baseUploadDir)) {
+    throw new Error('DIRECTORY_TRAVERSAL_DETECTED');
+  }
+
+  return resolved;
+}
+

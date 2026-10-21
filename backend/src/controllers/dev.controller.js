@@ -33,17 +33,85 @@ export const devExpireApproval = async (req, res) => {
   });
 };
 
+import Incident from '../models/Incident.js';
+import Job from '../models/Job.js';
+import { runSafetySchedulerOnce } from '../services/safety.scheduler.js';
+
+/**
+ * POST /api/v1/dev/incidents/:id/age
+ * Shifts an incident's createdAt and timeline timestamps into the past.
+ */
+export const devAgeIncident = async (req, res) => {
+  if (env.nodeEnv === 'production') {
+    return sendError(res, 403, 'Dev endpoints are disabled in production.', 'FORBIDDEN');
+  }
+
+  const { seconds = 90 } = req.body;
+  const incident = await Incident.findById(req.params.id);
+  if (!incident) {
+    return sendError(res, 404, 'Incident not found', 'NOT_FOUND');
+  }
+
+  const shiftMs = seconds * 1000;
+  incident.createdAt = new Date(incident.createdAt.getTime() - shiftMs);
+  for (const t of incident.timeline || []) {
+    t.at = new Date(new Date(t.at).getTime() - shiftMs);
+  }
+
+  await incident.save();
+
+  return sendSuccess(res, 200, {
+    message: `Aged incident by ${seconds} seconds`,
+    incidentId: incident._id,
+    newCreatedAt: incident.createdAt,
+  });
+};
+
+/**
+ * POST /api/v1/dev/jobs/:id/open-rating-window
+ * Sets a job's endDate to yesterday safely without corrupting data.
+ */
+export const devOpenRatingWindow = async (req, res) => {
+  if (env.nodeEnv === 'production') {
+    return sendError(res, 403, 'Dev endpoints are disabled in production.', 'FORBIDDEN');
+  }
+
+  const job = await Job.findById(req.params.id);
+  if (!job) {
+    return sendError(res, 404, 'Job not found', 'NOT_FOUND');
+  }
+
+  // Set endDate to 1 day in the past
+  const yesterday = new Date(clock.now().getTime() - 24 * 60 * 60 * 1000);
+  job.endDate = yesterday;
+  job.status = 'COMPLETED';
+  await job.save();
+
+  return sendSuccess(res, 200, {
+    message: 'Job marked COMPLETED with past endDate for rating window testing',
+    jobId: job._id,
+    endDate: job.endDate,
+  });
+};
+
 /**
  * POST /api/v1/dev/scheduler/run
- * Immediately triggers one execution of the scheduler tasks.
+ * Immediately triggers execution of both escrow and safety scheduler tasks.
  */
 export const devRunScheduler = async (req, res) => {
   if (env.nodeEnv === 'production') {
     return sendError(res, 403, 'Dev endpoints are disabled in production.', 'FORBIDDEN');
   }
 
-  const result = await runEscrowSchedulerOnce();
-  return sendSuccess(res, 200, result);
+  const [escrowResult, safetyResult] = await Promise.all([
+    runEscrowSchedulerOnce(),
+    runSafetySchedulerOnce(),
+  ]);
+
+  return sendSuccess(res, 200, {
+    escrow: escrowResult,
+    safety: safetyResult,
+  });
 };
 
 export { devWalletTopup };

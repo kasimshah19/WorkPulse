@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import api from '../../../../lib/api';
 import { JobMapPin } from '../../../../components/ui/JobMapPin';
+import { ScoreBadge } from '../../../../components/ui/ScoreBadge';
+import { TrustPanel } from '../../../../components/ui/TrustPanel';
 
 export default function WorkerJobDetailPage() {
   const params = useParams();
@@ -25,6 +27,7 @@ export default function WorkerJobDetailPage() {
   const jobId = params.id;
 
   const [job, setJob] = useState(null);
+  const [contractorRep, setContractorRep] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,6 +39,17 @@ export default function WorkerJobDetailPage() {
       try {
         const res = await api.get(`/jobs/${jobId}`);
         setJob(res.data);
+
+        // Fetch contractor reputation if contractor populated
+        const contractorId = res.data?.contractor?._id || res.data?.contractor;
+        if (contractorId) {
+          try {
+            const repRes = await api.get(`/users/${contractorId}/reputation`);
+            setContractorRep(repRes.data);
+          } catch {
+            // ignore reputation fetch error
+          }
+        }
       } catch (err) {
         setError(err.message || 'काम की जानकारी नहीं मिल सकी।');
       } finally {
@@ -214,6 +228,26 @@ export default function WorkerJobDetailPage() {
             </span>
           </div>
         </div>
+
+        {/* Contractor Trust & Reputation Card */}
+        {contractorRep && (
+          <div className="p-4 bg-slate-800/60 border border-slate-700/60 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">ठेकेदार (Contractor)</span>
+                <h3 className="text-sm font-black text-white">{contractorRep.name}</h3>
+              </div>
+              <ScoreBadge
+                score={contractorRep.summary?.score || 0}
+                count={contractorRep.summary?.count || 0}
+                badge={contractorRep.summary?.badge}
+                size="md"
+              />
+            </div>
+
+            <TrustPanel reputation={contractorRep} role="contractor" />
+          </div>
+        )}
 
         {/* Mini Site Map Pin */}
         <div className="space-y-2 pt-2">

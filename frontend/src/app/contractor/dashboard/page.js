@@ -13,18 +13,31 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
+  Star,
 } from 'lucide-react';
 import api from '../../../lib/api';
 import { useAuthStore } from '../../../store/authStore';
 import { getSocket } from '../../../lib/socket';
+import { ScoreBadge } from '../../../components/ui/ScoreBadge';
 
 export default function ContractorDashboardPage() {
   const { user, token } = useAuthStore();
 
   const [jobs, setJobs] = useState([]);
   const [attendanceCounts, setAttendanceCounts] = useState({});
+  const [pendingRatings, setPendingRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const fetchPendingRatings = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await api.get('/ratings/pending');
+      setPendingRatings(res.data || []);
+    } catch {
+      // ignore
+    }
+  }, [token]);
 
   useEffect(() => {
     if (user && user.role !== 'contractor') {
@@ -79,13 +92,18 @@ export default function ContractorDashboardPage() {
   useEffect(() => {
     if (user && user.role === 'contractor') {
       fetchMyJobs();
+      fetchPendingRatings();
     }
-  }, [fetchMyJobs, user]);
+  }, [fetchMyJobs, fetchPendingRatings, user]);
 
-  // Live Socket updates for applicant responses and attendance check-in
+  // Live Socket updates for applicant responses, attendance check-in, and rating requests
   useEffect(() => {
     if (!token) return;
     const socket = getSocket(token);
+
+    const handleRatingRequested = () => {
+      fetchPendingRatings();
+    };
 
     const handleApplicantAccepted = (payload) => {
       setJobs((prevJobs) =>
@@ -123,34 +141,69 @@ export default function ContractorDashboardPage() {
 
     socket.on('applicant:accepted', handleApplicantAccepted);
     socket.on('attendance:checkedIn', handleAttendanceCheckedIn);
+    socket.on('rating:requested', handleRatingRequested);
 
     return () => {
       socket.off('applicant:accepted', handleApplicantAccepted);
       socket.off('attendance:checkedIn', handleAttendanceCheckedIn);
+      socket.off('rating:requested', handleRatingRequested);
     };
-  }, [token]);
+  }, [token, fetchPendingRatings]);
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4 pb-20">
-      {/* Header with Post Job CTA */}
+      {/* Header with ScoreBadge & Post Job CTA */}
       <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between shadow-lg">
         <div>
-          <h2 className="text-base font-black text-white">
-            ठेकेदार: {user?.name || 'Thekedaar'}
-          </h2>
-          <p className="text-xs text-slate-400 font-mono">
-            {user?.phone}
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-base font-black text-white">
+              {user?.name || 'Thekedaar'}
+            </h2>
+            <ScoreBadge
+              score={user?.ratingSummary?.contractorPaymentScore || 0}
+              count={user?.ratingSummary?.contractorPaymentCount || 0}
+              size="sm"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+            <span className="font-mono">{user?.phone}</span>
+            <span>•</span>
+            <Link href="/contractor/my-ratings" className="text-blue-400 hover:underline flex items-center gap-0.5 font-bold">
+              <Star className="w-3 h-3 text-amber-400" />
+              स्कोरकार्ड
+            </Link>
+          </div>
         </div>
 
         <Link
           href="/contractor/post-job"
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md transition-transform active:scale-95"
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md transition-transform active:scale-95 shrink-0"
         >
           <PlusCircle className="w-4 h-4" />
-          नया काम (Post Job)
+          नया काम
         </Link>
       </div>
+
+      {/* Pending Ratings Alert Card */}
+      {pendingRatings.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-3 shadow">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Star className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-amber-300">कारीगरों को रेटिंग दें ({pendingRatings.length} काम)</h4>
+              <p className="text-[11px] text-amber-200/80">
+                काम पूरा हो गया! कारीगर के हुनर (Skill) पर 1-5 स्टार रेटिंग दें।
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/contractor/ratings/${pendingRatings[0].job?._id || pendingRatings[0].jobId}`}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-black shrink-0 shadow whitespace-nowrap"
+          >
+            रेट करें
+          </Link>
+        </div>
+      )}
 
       {/* Jobs List Header */}
       <div className="flex items-center justify-between pt-2">

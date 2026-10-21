@@ -559,3 +559,135 @@ flowchart TD
 +----------------------------------+
 ```
 
+---
+
+## 7. Phase 7: Reputation, SOS & Safety Wireframes
+
+### Screen S1: Persistent Floating SOS Button (2-Second Hold)
+- **Component**: `<SosButton>` (persistent floating red circular button, 64px+, bottom-right above BottomNav).
+- **Interaction**: Hold for 2s (circular SVG progress ring + haptic vibration). Touch/mouse/keyboard accessible.
+
+```text
++----------------------------------+
+| WP WorkPulse                     |
+|                                  |
+|         [Worker Dashboard]       |
+|                                  |
+|                                  |
+|                           ( ! )  | <-- 64px Red Siren Button
+|                          [Hold]  |     Progress Ring Fills
+|                                  |
+| [Home]   [Jobs]   [Wallet] [User]|
++----------------------------------+
+```
+
+### Screen S2: SOS 5-Second Cancel Countdown Overlay
+- **Component**: Fullscreen red modal with live countdown, cancel toggle for contractor privacy, and cancel button.
+
+```text
++----------------------------------+
+| 🚨 SOS BHEJ RAHE HAIN...         |
+|                                  |
+|               ( 5 )              |
+|        सेकंड में अलर्ट जाएगा     |
+|                                  |
+| [✓] ठेकेदार को भी बताएं          |
+|                                  |
+| +------------------------------+ |
+| | ✖ रोक दें (CANCEL ALERT)      | | (56px high touch target)
+| +------------------------------+ |
+|                                  |
+| ⚠️ आपातकाल में पहले 112 पर कॉल करें |
++----------------------------------+
+```
+
+### Screen S3: SOS Active Tracking & Resolution Screen
+- **Component**: Live delivery checklist, dynamic GPS updates, 112/108 fallbacks, and "Main Theek Hoon" resolution button.
+
+```text
++----------------------------------+
+| 🚨 SOS ALERT ACTIVE              |
+|                                  |
+| ✓ ठेकेदार को अलर्ट भेजा गया      |
+| ✓ 2 साथी मजदूरों को अलर्ट गया   |
+| ✓ परिवार को SMS भेजा गया         |
+| ⌛ एडमिन मॉनिटरिंग सक्रिय        |
+|                                  |
+| [LIVE] लोकेशन शेयर हो रही है...   |
+|                                  |
+| +------------------------------+ |
+| | [Phone] 112 पुलिस कॉल        | |
+| +------------------------------+ |
+| | [Ambulance] 108 एम्बुलेंस      | |
+| +------------------------------+ |
+| | [Check] मैं सुरक्षित हूँ (Safe)| | (Resolves SELF_SAFE)
+| +------------------------------+ |
++----------------------------------+
+```
+
+### Screen S4: Responder High-Priority Alert Modal
+- **Component**: High-priority modal with audio beep and vibration pattern, directions link, acknowledge button.
+
+```text
++----------------------------------+
+| 🚨 आपातकालीन SOS अलर्ट!           |
+|                                  |
+| रमेश कुमार (पेंटर)               |
+| फ़ोन: +91 90000 00001 [कॉल]      |
+| काम: बिल्डिंग प्लास्टर (साइट A)  |
+|                                  |
+| [========== MAP PIN ==========]  |
+| 500m दूर • अभी-अभी अलर्ट भेजा    |
+|                                  |
+| [ दिशा निर्देश (Directions) ]    |
+|                                  |
+| +------------------------------+ |
+| | ✓ मैंने देख लिया (Acknowledge) | |
+| +------------------------------+ |
++----------------------------------+
+```
+
+### Screen R1: Worker Two-Way Rating Screen (/worker/ratings/[jobId])
+- **Component**: Double-blind explanation banner, StarInput, TagChips multi-select (max 4), comment box.
+
+```text
++----------------------------------+
+| काम पूरा हुआ: रेटिंग दें          |
+|                                  |
+| ℹ️ दोनों तरफ की रेटिंग मिलने     |
+|    के बाद ही स्कोर खुलेगा।       |
+|                                  |
+| 1. पैसा कैसा मिला? (Payment)     |
+|    ⭐ ⭐ ⭐ ⭐ ⭐ (5.0 बहुत अच्छा)|
+|    [समय पर पैसा] [पूरा पैसा]     |
+|                                  |
+| 2. साइट पर सुरक्षा? (Safety)     |
+|    ⭐ ⭐ ⭐ ⭐ ⭐ (5.0 सुरक्षित)  |
+|    [सुरक्षा किट] [अच्छा व्यवहार] |
+|                                  |
+| टिप्पणी (वैकल्पिक):              |
+| [ समय पर हिसाब हुआ...          ] |
+|                                  |
+| +------------------------------+ |
+| | रेटिंग सबमिट करें (Submit)     | |
+| +------------------------------+ |
++----------------------------------+
+```
+
+### Screen T1: Contractor TrustPanel & Objective Scorecard
+- **Component**: `<TrustPanel>` with Bayesian smoothed score, badges, and escrow-verified objective track record.
+
+```text
++----------------------------------+
+| ठेकेदार: विक्रम मल्होत्रा        |
+| [ ⭐ 4.7 ] [ भरोसेमंद (GOOD) ]   |
+|                                  |
+| वस्तुनिष्ठ भुगतान रिकॉर्ड:       |
+| • 12 में से 10 बार समय पर मंज़ूर|
+| • औसत अनुमोदन समय: 2.4 घंटे      |
+| • 0 विवाद कारीगर के पक्ष में गए  |
+| • दुर्घटना दर: 0 / 100 दिन       |
++----------------------------------+
+```
+
+

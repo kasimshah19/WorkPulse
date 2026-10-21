@@ -18,11 +18,15 @@ import {
   History,
   ShieldCheck,
   XCircle,
+  Star,
+  ShieldAlert,
+  PhoneCall,
 } from 'lucide-react';
 import api from '../../../lib/api';
 import { useAuthStore } from '../../../store/authStore';
 import { useSocketStore } from '../../../store/socketStore';
 import { getSocket } from '../../../lib/socket';
+import { ScoreBadge } from '../../../components/ui/ScoreBadge';
 
 export default function WorkerDashboardPage() {
   const { user, updateUser, token } = useAuthStore();
@@ -30,9 +34,21 @@ export default function WorkerDashboardPage() {
 
   const [todayCards, setTodayCards] = useState([]);
   const [nearbyJobs, setNearbyJobs] = useState([]);
+  const [pendingRatings, setPendingRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable ?? true);
+
+  // Fetch pending ratings
+  const fetchPendingRatings = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await api.get('/ratings/pending');
+      setPendingRatings(res.data || []);
+    } catch {
+      // ignore
+    }
+  }, [token]);
 
   useEffect(() => {
     if (user && user.role !== 'worker') {
@@ -74,13 +90,20 @@ export default function WorkerDashboardPage() {
     if (user && user.role === 'worker') {
       fetchNearbyJobs();
       fetchTodayWork();
+      fetchPendingRatings();
     }
-  }, [fetchNearbyJobs, fetchTodayWork, user]);
+  }, [fetchNearbyJobs, fetchTodayWork, fetchPendingRatings, user]);
 
   // Sockets for real-time jobs and attendance/sign-off status
   useEffect(() => {
     if (!token) return;
     const socket = getSocket(token);
+
+    const handleRatingRequested = () => {
+      fetchPendingRatings();
+    };
+
+    socket.on('rating:requested', handleRatingRequested);
 
     const handleNewJob = (newJobData) => {
       setNearbyJobs((prev) => {
@@ -117,12 +140,13 @@ export default function WorkerDashboardPage() {
     socket.on('attendance:checkedOut', handleAttendanceChange);
 
     return () => {
+      socket.off('rating:requested', handleRatingRequested);
       socket.off('job:new', handleNewJob);
       socket.off('signoff:done', handleSignoffDone);
       socket.off('attendance:checkedIn', handleAttendanceChange);
       socket.off('attendance:checkedOut', handleAttendanceChange);
     };
-  }, [token, fetchTodayWork]);
+  }, [token, fetchTodayWork, fetchPendingRatings]);
 
   const handleToggleAvailability = async () => {
     const nextState = !isAvailable;
@@ -141,10 +165,17 @@ export default function WorkerDashboardPage() {
       {/* Header Profile Summary & Availability Toggle */}
       <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between shadow-lg">
         <div>
-          <h2 className="text-base font-black text-white">
-            नमस्ते, {user?.name?.split(' ')[0] || 'कारीगर'}
-          </h2>
-          <p className="text-xs text-slate-400">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-base font-black text-white">
+              नमस्ते, {user?.name?.split(' ')[0] || 'कारीगर'}
+            </h2>
+            <ScoreBadge
+              score={user?.ratingSummary?.workerSkillScore || 0}
+              count={user?.ratingSummary?.workerSkillCount || 0}
+              size="sm"
+            />
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">
             हुनर: {user?.skills?.join(', ') || 'सेट नहीं है'}
           </p>
         </div>
@@ -171,21 +202,77 @@ export default function WorkerDashboardPage() {
         </div>
       </div>
 
+      {/* Emergency Contact Reminder Banner */}
+      {!user?.hasEmergencyContact && (
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex items-center justify-between gap-3 shadow">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <PhoneCall className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-rose-300">इमरजेंसी कॉन्टैक्ट जोड़ें (Emergency Contact)</h4>
+              <p className="text-[11px] text-rose-200/80">
+                SOS दबाने पर आपके परिवार को तुरंत लोकेशन का SMS जाएगा।
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/worker/emergency-contact"
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold shrink-0 shadow whitespace-nowrap"
+          >
+            जोड़ें
+          </Link>
+        </div>
+      )}
+
+      {/* Pending Ratings Alert Banner */}
+      {pendingRatings.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-3 shadow">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Star className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-amber-300">रेटिंग बाकी है ({pendingRatings.length} काम)</h4>
+              <p className="text-[11px] text-amber-200/80">
+                काम पूरा हो गया! ठेकेदार को पेमेंट व सुरक्षा पर रेटिंग दें।
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/worker/ratings/${pendingRatings[0].job?._id || pendingRatings[0].jobId}`}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-black shrink-0 shadow whitespace-nowrap"
+          >
+            रेट करें
+          </Link>
+        </div>
+      )}
+
       {/* Navigation Quick Links */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <Link
           href="/worker/my-jobs"
-          className="p-3 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center gap-2 text-blue-400 font-bold text-xs"
+          className="p-2.5 bg-blue-600/10 border border-blue-500/20 rounded-xl flex flex-col items-center justify-center gap-1 text-blue-400 font-bold text-[11px] text-center"
         >
           <Briefcase className="w-4 h-4 text-blue-500" />
-          मेरे काम (My Jobs)
+          मेरे काम
         </Link>
         <Link
           href="/worker/attendance"
-          className="p-3 bg-emerald-600/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-emerald-400 font-bold text-xs"
+          className="p-2.5 bg-emerald-600/10 border border-emerald-500/20 rounded-xl flex flex-col items-center justify-center gap-1 text-emerald-400 font-bold text-[11px] text-center"
         >
           <History className="w-4 h-4 text-emerald-500" />
-          हाज़िरी इतिहास (History)
+          हाज़िरी
+        </Link>
+        <Link
+          href="/worker/my-ratings"
+          className="p-2.5 bg-amber-600/10 border border-amber-500/20 rounded-xl flex flex-col items-center justify-center gap-1 text-amber-400 font-bold text-[11px] text-center"
+        >
+          <Star className="w-4 h-4 text-amber-500" />
+          रेटिंग्स
+        </Link>
+        <Link
+          href="/worker/report"
+          className="p-2.5 bg-rose-600/10 border border-rose-500/20 rounded-xl flex flex-col items-center justify-center gap-1 text-rose-400 font-bold text-[11px] text-center"
+        >
+          <ShieldAlert className="w-4 h-4 text-rose-500" />
+          रिपोर्ट
         </Link>
       </div>
 

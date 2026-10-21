@@ -6,6 +6,7 @@ import { initSocket } from './sockets/index.js';
 import { ensureGeoIndexes } from './services/matching.service.js';
 import { startAttendanceScheduler, stopAttendanceScheduler } from './services/attendance.scheduler.js';
 import { startEscrowScheduler, stopEscrowScheduler } from './services/escrow.scheduler.js';
+import { startSafetyScheduler, stopSafetyScheduler } from './services/safety.scheduler.js';
 import logger from './utils/logger.js';
 
 const httpServer = http.createServer(app);
@@ -19,6 +20,7 @@ const startServer = async () => {
   await ensureGeoIndexes();
   startAttendanceScheduler();
   startEscrowScheduler();
+  startSafetyScheduler();
 
   httpServer.listen(env.port, () => {
     logger.info(`🚀 WorkPulse Backend listening on port ${env.port} (${env.nodeEnv})`);
@@ -30,6 +32,7 @@ const shutdown = (signal) => {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
   stopAttendanceScheduler();
   stopEscrowScheduler();
+  stopSafetyScheduler();
   httpServer.close(() => {
     logger.info('HTTP server closed.');
     process.exit(0);

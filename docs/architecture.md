@@ -605,3 +605,110 @@ sequenceDiagram
     Backend->>DB: Update User location -> profileComplete becomes true!
     Backend-->>Worker: 200 OK -> Redirect to Worker Dashboard
 ```
+
+---
+
+## 8. Phase 7: Reputation & Safety Architecture
+
+WorkPulse implements double-blind ratings to eliminate retaliatory rating bias and provides a zero-failure emergency SOS mechanism.
+
+### 8.1 Two-Way Rating with Double-Blind Reveal Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor W as "Worker"
+    actor C as "Contractor"
+    participant B as "Backend API"
+    participant S as "Safety Scheduler"
+    participant DB as "MongoDB (ratings, users)"
+
+    Note over W,C: Job completes or endDate passes
+    S->>DB: Scan ended jobs with eligible attendances/escrows
+    S->>B: Dispatch rating:requested notification to W and C
+
+    Note over C,DB: Step 1: Contractor Rates Worker Skill First
+    C->>B: POST /ratings { jobId, toUserId: W, type: "WORKER_SKILL", score: 5, tags: ["GOOD_WORK"] }
+    B->>B: Validate eligibility: Worker has >= 1 CHECKED_OUT attendance
+    B->>DB: Insert Rating { score: 5, revealedAt: null }
+    B->>B: revealIfReady(): Worker has not rated yet -> remains blind
+    B-->>C: 201 Created (Rating recorded, waiting for worker)
+
+    Note over W,B: Worker checks ratings -> Still hidden (no leak)
+    W->>B: GET /ratings/received
+    B-->>W: 200 OK (Empty - unrevealed ratings are omitted)
+
+    Note over W,DB: Step 2: Worker Rates Contractor
+    W->>B: POST /ratings { jobId, toUserId: C, type: "CONTRACTOR_PAYMENT", score: 5, tags: ["PAID_ON_TIME"] }
+    B->>B: Validate eligibility: Escrow row settled (RELEASED)
+    B->>DB: Insert Rating { score: 5, revealedAt: null }
+    B->>B: revealIfReady(): Both sides have rated!
+    B->>DB: Update revealedAt = now on both ratings
+    B->>B: recomputeRatingSummary(W) & recomputeRatingSummary(C)
+    B->>DB: Update users.ratingSummary (Bayesian smoothed score)
+    B->>W: Socket & Notification rating:revealed
+    B->>C: Socket & Notification rating:revealed
+    B-->>W: 201 Created (Both ratings revealed!)
+```
+
+### 8.2 Emergency SOS Trigger, Alerting, Escalation & Resolution
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor W as "Worker (In Distress)"
+    actor Co as "Coworkers on Job"
+    actor C as "Contractor"
+    actor Em as "Emergency Contact"
+    participant B as "Backend API"
+    participant S as "Safety Scheduler"
+    participant Adm as "Admins"
+    participant DB as "MongoDB (incidents)"
+
+    Note over W: Worker holds SOS button for 2 seconds
+    Note over W: 5-second cancel countdown passes
+    W->>W: Fetch GPS fix (4s timeout; fallback to last known if unavailable)
+    W->>B: POST /incidents/sos { idempotencyKey, lat, lng, accuracy, notifyContractor: true }
+
+    B->>DB: Upsert Incident (idempotent, type: "SOS", severity: "CRITICAL", status: "OPEN")
+    B->>DB: Append timeline "CREATED" and "ALERTED"
+
+    par Multi-Channel Immediate Dispatch
+        B->>C: Socket sos:alert + SMS with Google Maps link
+    and
+        B->>Co: Socket sos:alert (same job coworkers)
+    and
+        B->>Em: SMS to Emergency Contact ("WorkPulse SOS: Madad chahiye...")
+    and
+        B->>Adm: Socket sos:alert to role:admin room
+    end
+
+    B-->>W: 201 Created { incidentId, alerted: { contractor: true, coworkers: 1, emergencyContact: true, admins: true } }
+
+    loop Every 15 Seconds
+        W->>B: POST /incidents/:id/location { lat, lng, accuracy }
+        B->>DB: Append locationTrail (capped at 50)
+        B->>C: Socket sos:location (live map update)
+        B->>Adm: Socket sos:location
+    end
+
+    opt Unacknowledged Escalation
+        Note over S: If status remains OPEN after 60s
+        S->>DB: Transition escalationLevel: 0 -> 1, timeline "ESCALATED_1"
+        S->>C: Re-send SMS with latest location link
+        S->>Em: Re-send SMS
+        S->>Adm: Socket sos:escalated { level: 1 }
+    end
+
+    Note over C,B: Contractor Acknowledges
+    C->>B: POST /incidents/:id/acknowledge
+    B->>DB: Atomic update status: "ACKNOWLEDGED", alertedUsers.ackAt = now
+    B->>W: Socket sos:acknowledged ("Contractor ne dekh liya, madad aa rahi hai")
+
+    Note over W,B: Worker Reaches Safety
+    W->>B: POST /incidents/:id/resolve { resolutionType: "SELF_SAFE" }
+    B->>DB: Update status: "RESOLVED", resolvedBy: W, resolvedAt: now
+    B->>C: Socket sos:resolved
+    B->>Adm: Socket sos:resolved
+    B-->>W: 200 OK (Resolved)
+```

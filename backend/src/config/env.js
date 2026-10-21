@@ -60,6 +60,28 @@ const env = {
   voiceSessionTtlDays: parseInt(process.env.VOICE_SESSION_TTL_DAYS, 10) || 90,
   voiceDegradedCooldownSec: parseInt(process.env.VOICE_DEGRADED_COOLDOWN_SEC, 10) || 60,
   voiceConsentVersion: process.env.VOICE_CONSENT_VERSION || 'v1',
+
+  // Phase 7: Reputation & Safety
+  ratingWindowDays: parseInt(process.env.RATING_WINDOW_DAYS, 10) || 14,
+  ratingPriorCount: parseFloat(process.env.RATING_PRIOR_COUNT) || 3.0,
+  ratingPriorMean: parseFloat(process.env.RATING_PRIOR_MEAN) || 4.0,
+  ratingMinCountForBadge: parseInt(process.env.RATING_MIN_COUNT_FOR_BADGE, 10) || 3,
+  ratingCommentMax: parseInt(process.env.RATING_COMMENT_MAX, 10) || 300,
+  ratingReminderAfterDays: parseInt(process.env.RATING_REMINDER_AFTER_DAYS, 10) || 3,
+  devRatingAllowAnytime: process.env.DEV_RATING_ALLOW_ANYTIME === 'true' && process.env.NODE_ENV !== 'production',
+  sosEscalationSec: parseInt(process.env.SOS_ESCALATION_SEC, 10) || 60,
+  sosSecondEscalationSec: parseInt(process.env.SOS_SECOND_ESCALATION_SEC, 10) || 300,
+  sosDedupeWindowSec: parseInt(process.env.SOS_DEDUPE_WINDOW_SEC, 10) || 120,
+  sosMaxNewPerHour: parseInt(process.env.SOS_MAX_NEW_PER_HOUR, 10) || 5,
+  sosLocationTrailMax: parseInt(process.env.SOS_LOCATION_TRAIL_MAX, 10) || 50,
+  sosLocationMinIntervalSec: parseInt(process.env.SOS_LOCATION_MIN_INTERVAL_SEC, 10) || 5,
+  sosMaxCoworkersAlerted: parseInt(process.env.SOS_MAX_COWORKERS_ALERTED, 10) || 10,
+  sosNearbyVolunteers: process.env.SOS_NEARBY_VOLUNTEERS === 'true',
+  sosNearbyRadiusKm: parseFloat(process.env.SOS_NEARBY_RADIUS_KM) || 2.0,
+  sosNearbyMax: parseInt(process.env.SOS_NEARBY_MAX, 10) || 5,
+  sosSmsEnabled: process.env.SOS_SMS_ENABLED !== 'false',
+  incidentPhotoMax: parseInt(process.env.INCIDENT_PHOTO_MAX, 10) || 3,
+  safetySchedulerIntervalSec: parseInt(process.env.SAFETY_SCHEDULER_INTERVAL_SEC, 10) || 30,
 };
 
 export default env;

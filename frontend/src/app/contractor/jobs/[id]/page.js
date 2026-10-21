@@ -20,11 +20,13 @@ import {
   AlertTriangle,
   CreditCard,
   Lock,
+  ShieldAlert,
 } from 'lucide-react';
 import api from '../../../../lib/api';
 import { useAuthStore } from '../../../../store/authStore';
 import { getSocket } from '../../../../lib/socket';
 import { formatRupees } from '../../../../lib/utils';
+import { ScoreBadge } from '../../../../components/ui/ScoreBadge';
 
 export default function ContractorJobDetailPage() {
   const params = useParams();
@@ -35,7 +37,8 @@ export default function ContractorJobDetailPage() {
   const [job, setJob] = useState(null);
   const [applicants, setApplicants] = useState([]);
   const [escrowData, setEscrowData] = useState({ escrows: [], totals: {} });
-  const [activeTab, setActiveTab] = useState('applicants'); // 'applicants' | 'payments'
+  const [incidents, setIncidents] = useState([]);
+  const [activeTab, setActiveTab] = useState('applicants'); // 'applicants' | 'payments' | 'safety'
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,15 +47,19 @@ export default function ContractorJobDetailPage() {
     setLoading(true);
     setError('');
     try {
-      const [jobRes, appRes, escrowRes] = await Promise.all([
+      const [jobRes, appRes, escrowRes, incidentRes] = await Promise.all([
         api.get(`/jobs/${jobId}`),
         api.get(`/jobs/${jobId}/applicants`),
         api.get(`/escrow/jobs/${jobId}`).catch(() => ({ data: { escrows: [], totals: {} } })),
+        api.get(`/jobs/${jobId}/incidents`).catch(() => ({ data: [] })),
       ]);
       setJob(jobRes.data);
       setApplicants(appRes.data || []);
       if (escrowRes?.data) {
         setEscrowData(escrowRes.data);
+      }
+      if (incidentRes?.data) {
+        setIncidents(incidentRes.data);
       }
     } catch (err) {
       setError(err.message || 'जानकारी लोड करने में समस्या हुई।');
@@ -273,7 +280,18 @@ export default function ContractorJobDetailPage() {
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          भुगतान व एस्क्रो ({escrowData.escrows?.length || 0})
+          भुगतान ({escrowData.escrows?.length || 0})
+        </button>
+        <button
+          onClick={() => setActiveTab('safety')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg text-center transition-all flex items-center justify-center gap-1 ${
+            activeTab === 'safety'
+              ? 'bg-rose-600 text-white shadow'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5" />
+          सुरक्षा ({incidents.length})
         </button>
       </div>
 
@@ -331,10 +349,15 @@ export default function ContractorJobDetailPage() {
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-sm font-bold text-white truncate">
                             {worker.name}
                           </h4>
+                          <ScoreBadge
+                            score={worker.ratingSummary?.workerSkillScore || 0}
+                            count={worker.ratingSummary?.workerSkillCount || 0}
+                            size="sm"
+                          />
                           <span
                             className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
                               isAssigned
@@ -480,6 +503,117 @@ export default function ContractorJobDetailPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab 3: Safety / Incidents Tab */}
+      {activeTab === 'safety' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              सुरक्षा घटनाएं (Safety Incidents & SOS)
+            </h2>
+            <button
+              onClick={fetchJobDetails}
+              className="p-1 text-slate-400 hover:text-white"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            कार्यस्थल पर रिपोर्ट की गई दुर्घटनाएं, SOS अलर्ट और सुरक्षा मुद्दे।
+          </p>
+
+          {incidents.length === 0 ? (
+            <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center space-y-2">
+              <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto" />
+              <div className="text-xs font-bold text-slate-200">सब सुरक्षित है!</div>
+              <div className="text-[11px] text-slate-400">इस काम पर अभी तक कोई सुरक्षा घटना रिपोर्ट नहीं हुई है।</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {incidents.map((inc) => {
+                const isCritical = inc.severity === 'CRITICAL' || inc.type === 'SOS';
+                return (
+                  <div
+                    key={inc._id}
+                    className={`p-4 rounded-xl border space-y-3 ${
+                      isCritical
+                        ? 'bg-rose-500/10 border-rose-500/30'
+                        : 'bg-slate-900 border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${
+                              inc.type === 'SOS'
+                                ? 'bg-rose-600 text-white'
+                                : inc.type === 'INJURY'
+                                ? 'bg-amber-600 text-white'
+                                : 'bg-blue-600 text-white'
+                            }`}
+                          >
+                            {inc.type}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              inc.status === 'RESOLVED'
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                : inc.status === 'ACKNOWLEDGED'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                : 'bg-rose-500/20 text-rose-300 border-rose-500/30 animate-pulse'
+                            }`}
+                          >
+                            {inc.status}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-white mt-1.5">
+                          {inc.description || (inc.type === 'SOS' ? '🚨 आपातकालीन SOS अलर्ट' : 'सुरक्षा घटना')}
+                        </h4>
+                      </div>
+
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {new Date(inc.createdAt).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    {/* Reporter Info */}
+                    <div className="text-[11px] text-slate-300 flex items-center gap-2 bg-slate-950/60 p-2 rounded-lg font-mono">
+                      <span>रिपोर्टर: {inc.reportedBy?.name || 'Worker'}</span>
+                      {inc.reportedBy?.phone && (
+                        <>
+                          <span>•</span>
+                          <a href={`tel:${inc.reportedBy.phone}`} className="text-blue-400 flex items-center gap-0.5">
+                            <Phone className="w-3 h-3" />
+                            {inc.reportedBy.phone}
+                          </a>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Timeline Preview */}
+                    {inc.timeline && inc.timeline.length > 0 && (
+                      <div className="text-[10px] text-slate-400 space-y-1 border-t border-slate-800/80 pt-2">
+                        <span className="font-bold text-slate-300 block">टाइमलाइन (Timeline):</span>
+                        {inc.timeline.slice(-3).map((t, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                            <span className="font-bold text-slate-300">{t.event}</span>
+                            <span>•</span>
+                            <span>{new Date(t.at).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

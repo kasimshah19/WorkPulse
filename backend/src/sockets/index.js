@@ -96,6 +96,28 @@ export const initSocket = (httpServer, clientUrl) => {
       }
     });
 
+    // Client Delivery Receipt for SOS Alert
+    socket.on('sos:ack-received', async ({ incidentId }) => {
+      if (incidentId) {
+        try {
+          const Incident = (await import('../models/Incident.js')).default;
+          await Incident.updateOne(
+            {
+              _id: incidentId,
+              'alertedUsers.user': user._id,
+              'alertedUsers.deliveredAt': null,
+            },
+            {
+              $set: { 'alertedUsers.$.deliveredAt': new Date() },
+            }
+          );
+          logger.info(`User ${user._id} confirmed delivery of sos:alert for ${incidentId}`);
+        } catch (err) {
+          logger.warn(`Failed to stamp sos:ack-received: ${err.message}`);
+        }
+      }
+    });
+
     // Worker manual room joins if needed (e.g. active job room)
     socket.on('job:join', ({ jobId }) => {
       if (jobId) {

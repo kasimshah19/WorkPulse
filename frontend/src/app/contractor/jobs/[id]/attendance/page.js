@@ -27,6 +27,7 @@ import {
 import api from '../../../../../lib/api';
 import { useAuthStore } from '../../../../../store/authStore';
 import { getSocket } from '../../../../../lib/socket';
+import { ScoreBadge } from '../../../../../components/ui/ScoreBadge';
 import 'leaflet/dist/leaflet.css';
 
 // Dynamic Leaflet Map components for detail sheet
@@ -388,8 +389,13 @@ export default function ContractorJobAttendancePage() {
 
               {/* Worker Info & Check-in / Out Time */}
               <div className="flex-1 min-w-0 space-y-0.5">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <h4 className="text-xs font-bold text-white truncate">{worker.name}</h4>
+                  <ScoreBadge
+                    score={worker.ratingSummary?.workerSkillScore || 0}
+                    count={worker.ratingSummary?.workerSkillCount || 0}
+                    size="sm"
+                  />
                   {attendance?.flags?.map((f) => (
                     <span
                       key={f}

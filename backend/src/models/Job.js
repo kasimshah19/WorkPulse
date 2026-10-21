@@ -47,6 +47,12 @@ const jobSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    assignedWorkers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     wagePerDayPaise: {
       type: Number,
       required: true,

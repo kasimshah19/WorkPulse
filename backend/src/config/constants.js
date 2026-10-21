@@ -255,6 +255,75 @@ export const DISPUTE_EVIDENCE_TYPE = Object.freeze({
   NOTE: 'note',
 });
 
+/** Rating Tags by Type */
+export const RATING_TAGS = Object.freeze({
+  WORKER_SKILL: [
+    'ON_TIME',
+    'GOOD_WORK',
+    'HARD_WORKING',
+    'HONEST',
+    'TEAMWORK',
+    'NEEDS_SUPERVISION',
+    'LATE',
+  ],
+  CONTRACTOR_PAYMENT: [
+    'PAID_ON_TIME',
+    'PAID_FULL_AMOUNT',
+    'PAYMENT_DELAYED',
+    'AMOUNT_CUT',
+    'FAIR_SIGNOFF',
+  ],
+  CONTRACTOR_SAFETY: [
+    'SAFETY_GEAR_GIVEN',
+    'SAFE_SITE',
+    'RESPECTFUL',
+    'NO_ABUSE',
+    'UNSAFE_SITE',
+    'ABUSIVE_LANGUAGE',
+  ],
+});
+
+/** Incident Timeline Events */
+export const INCIDENT_TIMELINE_EVENT = Object.freeze({
+  CREATED: 'CREATED',
+  ALERTED: 'ALERTED',
+  ACKNOWLEDGED: 'ACKNOWLEDGED',
+  LOCATION_UPDATE: 'LOCATION_UPDATE',
+  ESCALATED_1: 'ESCALATED_1',
+  ESCALATED_2: 'ESCALATED_2',
+  RESOLVED: 'RESOLVED',
+  NOTE: 'NOTE',
+  PHOTO_ADDED: 'PHOTO_ADDED',
+});
+
+/** Location Flags */
+export const LOCATION_FLAG = Object.freeze({
+  OK: 'OK',
+  STALE: 'STALE',
+  MISSING: 'MISSING',
+});
+
+/** Incident Resolution Types */
+export const RESOLUTION_TYPE = Object.freeze({
+  HELP_PROVIDED: 'HELP_PROVIDED',
+  FALSE_ALARM: 'FALSE_ALARM',
+  SELF_SAFE: 'SELF_SAFE',
+  OTHER: 'OTHER',
+});
+
+/** Job Context for SOS */
+export const JOB_CONTEXT = Object.freeze({
+  CHECKED_IN: 'CHECKED_IN',
+  ASSIGNED_TODAY: 'ASSIGNED_TODAY',
+  NONE: 'NONE',
+});
+
+/** Incident Visibility */
+export const INCIDENT_VISIBILITY = Object.freeze({
+  ALERTED_USERS: 'ALERTED_USERS',
+  ADMIN_ONLY: 'ADMIN_ONLY',
+});
+
 /** Notification Types */
 export const NOTIFICATION_TYPE = Object.freeze({
   JOB_MATCH: 'JOB_MATCH',
@@ -265,6 +334,9 @@ export const NOTIFICATION_TYPE = Object.freeze({
   PAYMENT_RELEASED: 'PAYMENT_RELEASED',
   DISPUTE_UPDATE: 'DISPUTE_UPDATE',
   SOS: 'SOS',
+  SOS_ACK: 'SOS_ACK',
+  SOS_RESOLVED: 'SOS_RESOLVED',
+  INCIDENT_UPDATE: 'INCIDENT_UPDATE',
   RATING_REQUEST: 'RATING_REQUEST',
   SYSTEM: 'SYSTEM',
 });
@@ -277,3 +349,4 @@ export const NOTIFICATION_STATUS = Object.freeze({
   FAILED: 'FAILED',
   READ: 'READ',
 });
+

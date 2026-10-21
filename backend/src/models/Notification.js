@@ -53,6 +53,12 @@ const notificationSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    dedupeKey: {
+      type: String,
+      default: null,
+      sparse: true,
+      index: { unique: true, sparse: true },
+    },
   },
   {
     timestamps: true,
