@@ -8,6 +8,12 @@ import JobApplication from '../models/JobApplication.js';
 import Notification from '../models/Notification.js';
 import Otp from '../models/Otp.js';
 import LedgerEntry from '../models/LedgerEntry.js';
+import Attendance from '../models/Attendance.js';
+import EscrowTransaction from '../models/EscrowTransaction.js';
+import Dispute from '../models/Dispute.js';
+import PaymentOrder from '../models/PaymentOrder.js';
+import Payout from '../models/Payout.js';
+import AuditLog from '../models/AuditLog.js';
 import { postLedgerGroup } from '../services/ledger.service.js';
 import { LEDGER_ACCOUNT } from '../config/constants.js';
 import { destinationPoint, haversineDistance } from '../utils/geo.js';
@@ -30,13 +36,19 @@ const runSeed = async () => {
   console.log(`\n🌱 WorkPulse Seed Script Starting... (Center: [Lat: ${centerLat}, Lng: ${centerLng}])`);
 
   if (isReset) {
-    console.log('🧹 Wiping existing seed data (users, jobs, applications, notifications, otps, wallets, ledger)...');
+    console.log('🧹 Wiping existing seed data (users, jobs, applications, notifications, otps, wallets, ledger, escrow, attendance, disputes, payouts, paymentorders, auditlogs)...');
     await User.deleteMany({});
     await Wallet.deleteMany({});
     await Job.deleteMany({});
     await JobApplication.deleteMany({});
     await Notification.deleteMany({});
     await Otp.deleteMany({});
+    await Attendance.deleteMany({});
+    await EscrowTransaction.deleteMany({});
+    await Dispute.deleteMany({});
+    await PaymentOrder.deleteMany({});
+    await Payout.deleteMany({});
+    await AuditLog.deleteMany({});
     if (LedgerEntry.collection) {
       await LedgerEntry.collection.deleteMany({});
     }
