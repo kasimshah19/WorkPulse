@@ -530,3 +530,78 @@ sequenceDiagram
 * **RBI-Licensed Escrow Banking**: Production escrow will interface with Razorpay in Test Mode + an internal double-entry ledger. Real escrow trustee accounts (e.g. ICICI Trustee / Escrowpay) will be integrated in future phases.
 * **Aadhaar eKYC Biometrics**: Real UIDAI Aadhaar biometrics are excluded. Simulated OTP verification and phone validation are utilized.
 * **Native Mobile Apps (Android APK / iOS)**: The system is designed and deployed as a responsive, installable Progressive Web App (PWA). Native wrappers (React Native / Capacitor) remain out of current scope.
+
+---
+
+## 7. Voice Onboarding Architecture (Phase 6)
+
+### 7.1 Overview & Dual-Path Strategy
+WorkPulse provides a voice-first onboarding flow for blue-collar workers speaking Hindi, Marathi, or English. To ensure reliability across diverse devices, browsers, and low-connectivity environments, the system implements a dual-path architecture with a guaranteed icon-grid fallback.
+
+1. **WebSpeech Path (Browser STT + Server Extraction)**:
+   - Available on Chromium browsers with online connectivity.
+   - Browser's Web Speech API produces real-time interim and final transcripts locally/via browser speech services.
+   - Backend Express forwards the transcript to Python FastAPI `voice-service` (`POST /extract`).
+   - Pure Python rule-based deterministic extractor parses skills, compound phrases, negations, and experience years.
+2. **Server Audio Path (Audio Recording + Whisper STT + Server Extraction)**:
+   - Used when Web Speech API is unsupported, offline, or chosen by the worker.
+   - Browser records audio (WebM/WAV/Ogg/MP4) via `MediaRecorder` in-memory.
+   - Backend Express verifies magic bytes and forwards the in-memory buffer via multipart to `voice-service` (`POST /onboard`).
+   - `voice-service` transcribes via `faster-whisper` (or mock/OpenAI) and extracts skills in a single pipeline.
+3. **Privacy & DPDP Act 2023 Compliance**:
+   - **Zero Audio Persistence**: Raw audio bytes are NEVER stored on disk, DB, or logs. Processing occurs strictly in memory (`io.BytesIO` / Multer memory storage).
+   - **Draft Isolation**: Neither `/voice/extract` nor `/voice/onboard` writes skills to the worker's `User` document. Extracted skills remain a DRAFT until the worker confirms on screen.
+   - **Data Minimization & TTL**: Transcripts are capped at 500 characters and stored in `voicesessions` with a MongoDB TTL index that auto-deletes records after 90 days.
+4. **Icon Grid Fallback**:
+   - Always accessible from consent decline, mic denial, service offline (`503 VOICE_UNAVAILABLE`), or user choice.
+   - Saves final skills via `POST /voice/confirm` with `method: ICON_FALLBACK`.
+
+### 7.2 Voice Onboarding Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Worker as "Worker (Mobile PWA)"
+    participant Backend as "Express Backend"
+    participant VoiceService as "FastAPI Voice Service"
+    participant DB as "MongoDB"
+
+    Note over Worker,Backend: 1. Language & DPDP Consent
+    Worker->>Backend: PATCH /users/me (languagePreference)
+    Worker->>Worker: Grant DPDP Voice Consent (or Decline -> Icon Grid)
+
+    alt WebSpeech Path (Default Online Chrome)
+        Worker->>Worker: Web Speech API listens (interim results)
+        Worker->>Backend: POST /api/v1/voice/extract (transcript, lang, consent=true)
+        Backend->>Backend: Validate JWT & rate limit
+        Backend->>VoiceService: POST /extract (X-Internal-Key, text, allowedSkills)
+        VoiceService->>VoiceService: Rule-based lexicon & negation extraction
+        VoiceService-->>Backend: { skills, suggestions, experienceYears, flags }
+        Backend->>DB: Save draft VoiceSession (WEBSPEECH_TEXT, status: EXTRACTED)
+        Backend-->>Worker: 200 OK (sessionId, draft skills, suggestions, expYears)
+    else Server Audio Path (Recorded Audio)
+        Worker->>Worker: MediaRecorder captures audio blob (max 20s)
+        Worker->>Backend: POST /api/v1/voice/onboard (multipart audio, lang, consent=true)
+        Backend->>Backend: Verify magic bytes & max size (5MB in-memory)
+        Backend->>VoiceService: POST /onboard (X-Internal-Key, audio buffer, allowedSkills)
+        VoiceService->>VoiceService: Whisper STT transcribe + rule-based extraction
+        VoiceService-->>Backend: { transcript, skills, suggestions, expYears }
+        Backend->>DB: Save draft VoiceSession (SERVER_AUDIO, status: EXTRACTED)
+        Backend-->>Worker: 200 OK (sessionId, transcript, draft skills, expYears)
+    else Fallback Path (Mic Denied / Service Down)
+        Worker->>Worker: Worker selects skills from 16-skill icon grid
+    end
+
+    Note over Worker,DB: 2. Confirmation & Profile Save (Draft Finalization)
+    Worker->>Worker: Review chips, adjust years (+/-), optional readback
+    Worker->>Backend: POST /api/v1/voice/confirm (sessionId, skills[], expYears)
+    Backend->>Backend: Validate skills against enum & exp 0-50
+    Backend->>DB: Update VoiceSession (status: CONFIRMED, finalSkills, finalExp)
+    Backend->>DB: Update User (skills, experienceYears)
+    Backend-->>Worker: 200 OK { session, user: { profileComplete } }
+
+    Note over Worker,DB: 3. Location & Availability
+    Worker->>Backend: PATCH /users/me/location (lat, lng)
+    Backend->>DB: Update User location -> profileComplete becomes true!
+    Backend-->>Worker: 200 OK -> Redirect to Worker Dashboard
+```

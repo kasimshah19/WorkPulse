@@ -26,6 +26,30 @@ export const normalizePhone = (phone) => {
 };
 
 /**
+ * Serializes a user object, attaching profileComplete
+ * Worker: true if skills.length >= 1 and location coordinates != [0, 0]
+ * Contractor: always true
+ */
+export const serializeUser = (user) => {
+  const isWorker = user.role === 'worker';
+  const hasSkills = Array.isArray(user.skills) && user.skills.length >= 1;
+  const hasLocation =
+    user.location &&
+    Array.isArray(user.location.coordinates) &&
+    (user.location.coordinates[0] !== 0 || user.location.coordinates[1] !== 0);
+
+  const profileComplete = isWorker ? (hasSkills && hasLocation) : true;
+  const userObj = user.toObject ? user.toObject() : { ...user };
+  delete userObj.__v;
+
+  return {
+    ...userObj,
+    id: user._id || user.id,
+    profileComplete,
+  };
+};
+
+/**
  * POST /api/v1/auth/send-otp
  */
 export const sendOtp = async (req, res) => {
@@ -158,16 +182,7 @@ export const verifyOtp = async (req, res) => {
 
   return sendSuccess(res, 200, {
     token,
-    user: {
-      id: user._id,
-      name: user.name,
-      phone: user.phone,
-      role: user.role,
-      languagePreference: user.languagePreference,
-      isAvailable: user.isAvailable,
-      skills: user.skills,
-      location: user.location,
-    },
+    user: serializeUser(user),
     isNewUser,
   });
 };
@@ -176,7 +191,7 @@ export const verifyOtp = async (req, res) => {
  * GET /api/v1/auth/me
  */
 export const getMe = async (req, res) => {
-  return sendSuccess(res, 200, req.user);
+  return sendSuccess(res, 200, serializeUser(req.user));
 };
 
 /**
@@ -203,16 +218,7 @@ export const devLogin = async (req, res) => {
 
   return sendSuccess(res, 200, {
     token,
-    user: {
-      id: user._id,
-      name: user.name,
-      phone: user.phone,
-      role: user.role,
-      languagePreference: user.languagePreference,
-      isAvailable: user.isAvailable,
-      skills: user.skills,
-      location: user.location,
-    },
+    user: serializeUser(user),
   });
 };
 

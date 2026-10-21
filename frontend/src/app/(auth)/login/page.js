@@ -62,11 +62,17 @@ export default function LoginPage() {
       if (res.data?.token && res.data?.user) {
         setAuth(res.data.user, res.data.token);
 
-        // Redirect based on role
+        // Redirect based on role and profile completion
         if (res.data.user.role === 'contractor') {
           router.push('/contractor/dashboard');
+        } else if (res.data.user.role === 'admin') {
+          router.push('/admin/disputes');
         } else {
-          router.push('/worker/dashboard');
+          if (res.data.user.profileComplete === false || !res.data.user.skills || res.data.user.skills.length === 0) {
+            router.push('/worker/onboarding');
+          } else {
+            router.push('/worker/dashboard');
+          }
         }
       }
     } catch (err) {

@@ -50,8 +50,16 @@ const env = {
   attendanceMaxSpeedKmh: parseInt(process.env.ATTENDANCE_MAX_SPEED_KMH, 10) || 150,
   selfieMaxBytes: parseInt(process.env.SELFIE_MAX_BYTES, 10) || 2097152,
   uploadDir: process.env.UPLOAD_DIR || './uploads',
-  attendanceSchedulerIntervalSec: parseInt(process.env.ATTENDANCE_SCHEDULER_INTERVAL_SEC, 10) || 60,
   devAllowLocationOverride: process.env.DEV_ALLOW_LOCATION_OVERRIDE === 'true' && process.env.NODE_ENV !== 'production',
+  voiceEnabled: process.env.VOICE_ENABLED !== 'false',
+  voiceServiceApiKey: process.env.VOICE_SERVICE_API_KEY || 'workpulse-internal-voice-key-2026',
+  voiceTimeoutMs: parseInt(process.env.VOICE_TIMEOUT_MS, 10) || 30000,
+  voiceMaxAudioBytes: parseInt(process.env.VOICE_MAX_AUDIO_BYTES, 10) || 5242880,
+  voiceOnboardRatePerHour: parseInt(process.env.VOICE_ONBOARD_RATE_PER_HOUR, 10) || 10,
+  voiceExtractRatePerHour: parseInt(process.env.VOICE_EXTRACT_RATE_PER_HOUR, 10) || 30,
+  voiceSessionTtlDays: parseInt(process.env.VOICE_SESSION_TTL_DAYS, 10) || 90,
+  voiceDegradedCooldownSec: parseInt(process.env.VOICE_DEGRADED_COOLDOWN_SEC, 10) || 60,
+  voiceConsentVersion: process.env.VOICE_CONSENT_VERSION || 'v1',
 };
 
 export default env;

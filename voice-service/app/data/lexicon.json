@@ -1,0 +1,148 @@
+{
+  "skills": {
+    "painter": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["पेंटर", "पेंट", "रंगाई", "पुताई", "कलर", "सफेदी", "रंग काम", "रंगसाज"],
+        "mr_deva": ["रंगारी", "रंगकाम", "पेंटर", "रंग", "सफेदी", "कलरकाम"],
+        "roman": ["painter", "penter", "paint", "rang", "rangrez", "rangai", "putai", "color", "colour", "safedi", "rangari", "rangkam"],
+        "en": ["painter", "paint", "painting", "whitewash", "polisher"]
+      }
+    },
+    "plumber": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["प्लंबर", "नल", "पाइप", "नलसाज", "प्लम्बिंग", "पाइप फिटर"],
+        "mr_deva": ["नळ", "नळ कारागीर", "नळकाम", "प्लंबर", "पाइप"],
+        "roman": ["plumber", "nal", "nalsaaz", "nalkam", "pipe", "pipe fitter", "plumbing"],
+        "en": ["plumber", "plumbing", "pipe fitter", "pipefitter"]
+      }
+    },
+    "electrician": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["इलेक्ट्रीशियन", "इलेक्ट्रिशियन", "बिजली", "बिजली का काम", "वायरिंग", "लाइट मिस्त्री", "वायरमैन", "विद्युत"],
+        "mr_deva": ["इलेक्ट्रिशियन", "वीज", "वीज कामगार", "वायरिंग", "विद्युत"],
+        "roman": ["electrician", "bijli", "bijli ka kaam", "wiring", "wireman", "bijli mistri", "light mistri", "vidyut"],
+        "en": ["electrician", "electrical", "wiring", "wireman"]
+      }
+    },
+    "mason": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["राजमिस्त्री", "राज मिस्त्री", "मिस्त्री", "चिनाई", "गारा", "जोड़ाई"],
+        "mr_deva": ["गवंडी", "गवंडी काम", "राज मिस्त्री", "चिनाई"],
+        "roman": ["raj mistri", "rajmistri", "mason", "chinai", "gavandi", "gara", "jodai"],
+        "en": ["mason", "bricklayer", "masonry", "construction worker"]
+      }
+    },
+    "carpenter": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["बढ़ई", "बढई", "सुतार", "कारपेंटर", "लकड़ी का काम", "फर्नीचर"],
+        "mr_deva": ["सुतार", "सुतारकाम", "कारपेंटर", "लाकडी काम"],
+        "roman": ["carpenter", "badhai", "barhai", "sutar", "lakdi ka kaam", "lakdi mistri", "furniture"],
+        "en": ["carpenter", "woodworker", "cabinet maker", "carpentry"]
+      }
+    },
+    "welder": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["वेल्डर", "वेल्डिंग", "लोहे का काम"],
+        "mr_deva": ["वेल्डर", "वेल्डिंग", "लोखंडी काम"],
+        "roman": ["welder", "welding", "fabrication", "fabricator", "loha"],
+        "en": ["welder", "welding", "fabricator"]
+      }
+    },
+    "tile_worker": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["टाइल कारीगर", "टाइल", "फर्श", "मार्बल", "टाइल्स"],
+        "mr_deva": ["फरशी कारागीर", "टाइल", "फरशी", "मार्बल"],
+        "roman": ["tile worker", "tile", "tiles", "marble", "farsh", "tile fitter"],
+        "en": ["tile worker", "tiler", "marble worker", "flooring worker"]
+      }
+    },
+    "tile_layer": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["टाइल लेयर", "टाइल फिटर", "फर्श कारीगर", "टाइल लगाने वाला"],
+        "mr_deva": ["फरशी बसवणारा", "टाइल लेयर"],
+        "roman": ["tile layer", "tile layer fitter", "flooring installer"],
+        "en": ["tile layer", "floor layer"]
+      }
+    },
+    "laborer": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["मजदूर", "मज़दूर", "मजदूरी", "मजूर"],
+        "mr_deva": ["मजूर", "मजुरी"],
+        "roman": ["laborer", "labourer", "majdoor", "mazdoor", "labour", "labor"],
+        "en": ["laborer", "labourer", "unskilled worker"]
+      }
+    },
+    "helper": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["हेल्पर", "सहायक", "बेलदार", "छोटा मिस्त्री"],
+        "mr_deva": ["मदतनीस", "हेल्पर"],
+        "roman": ["helper", "beldar", "sahayak", "assistant"],
+        "en": ["helper", "assistant", "construction helper"]
+      }
+    },
+    "bar_bender": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["सरिया कारीगर", "सरिया बांधने वाला", "सरिया", "स्टील फिक्सर"],
+        "mr_deva": ["लोखंडी कामगार", "सरिया कामगार"],
+        "roman": ["bar bender", "sariya", "steel fixer", "barbending", "rebar"],
+        "en": ["bar bender", "rebar worker", "steel fixer"]
+      }
+    },
+    "concrete_worker": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["ढलाई कारीगर", "ढलाई", "कंक्रीट", "कास्टिंग"],
+        "mr_deva": ["काँक्रीट कामगार", "ढलाई"],
+        "roman": ["concrete worker", "dhalai", "concrete", "casting"],
+        "en": ["concrete worker", "concreter", "cement worker"]
+      }
+    },
+    "driver": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["ड्राइवर", "चालक", "गाड़ी चलाना"],
+        "mr_deva": ["चालक", "ड्रायव्हर"],
+        "roman": ["driver", "chalaak", "gadi chalana"],
+        "en": ["driver", "chauffeur"]
+      }
+    },
+    "cleaner": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["सफाई कर्मचारी", "सफाई", "स्वीपर", "झाड़ू पोछा"],
+        "mr_deva": ["स्वच्छता कामगार", "सफाई कामगार"],
+        "roman": ["cleaner", "safai", "sweeper", "cleaning"],
+        "en": ["cleaner", "sweeper", "janitor"]
+      }
+    },
+    "gardener": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["माली", "बागवानी"],
+        "mr_deva": ["माळी", "बागकाम"],
+        "roman": ["gardener", "mali", "bagwani"],
+        "en": ["gardener", "landscaper"]
+      }
+    },
+    "cook": {
+      "weight": 1.0,
+      "synonyms": {
+        "hi_deva": ["रसोइया", "कुक", "बावर्ची", "खाना बनाना"],
+        "mr_deva": ["आचारी", "कुक"],
+        "roman": ["cook", "rasoiya", "bawarchi", "chef"],
+        "en": ["cook", "chef"]
+      }
+    }
+  }
+}

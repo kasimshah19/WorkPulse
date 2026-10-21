@@ -9,6 +9,7 @@ import {
   getReconciliationReport,
   getAdminStats,
 } from '../controllers/admin.controller.js';
+import { getVoiceStats } from '../controllers/voice.controller.js';
 
 import LedgerEntry from '../models/LedgerEntry.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -26,6 +27,7 @@ router.get('/ledger/reconcile', asyncHandler(getReconciliationReport));
 router.get('/reconciliation', asyncHandler(getReconciliationReport));
 router.post('/reconciliation/run', asyncHandler(getReconciliationReport));
 router.get('/stats', asyncHandler(getAdminStats));
+router.get('/voice/stats', asyncHandler(getVoiceStats));
 router.get('/ledger-groups', asyncHandler(async (req, res) => {
   const limit = Math.min(100, parseInt(req.query.limit, 10) || 20);
   const groups = await LedgerEntry.find().sort({ createdAt: -1 }).limit(limit).lean();

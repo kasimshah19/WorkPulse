@@ -26,7 +26,9 @@ export const SKILLS = Object.freeze([
   'painter', // पेंटर
   'welder', // वेल्डर
   'tile_worker', // टाइल कारीगर
-  'laborer', // सामान्य मजदूर / हेल्पर
+  'tile_layer', // टाइल लेयर / फर्श कारीगर
+  'laborer', // सामान्य मजदूर
+  'helper', // हेल्पर / सहायक
   'bar_bender', // सरिया बांधने वाला
   'concrete_worker', // ढलाई कारीगर
   'driver', // ड्राइवर

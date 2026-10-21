@@ -44,7 +44,11 @@ export default function DevLoginPage() {
         } else if (role === 'admin') {
           router.push('/admin/disputes');
         } else {
-          router.push('/worker/dashboard');
+          if (res.data.user.profileComplete === false || !res.data.user.skills || res.data.user.skills.length === 0) {
+            router.push('/worker/onboarding');
+          } else {
+            router.push('/worker/dashboard');
+          }
         }
       }
     } catch (err) {

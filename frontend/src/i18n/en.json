@@ -46,6 +46,51 @@
   "upi_id": "UPI ID",
   "update_upi": "Update UPI",
   "escrow_released": "Paid & Released",
-  "escrow_funded": "Funded & Guaranteed"
-}
+  "escrow_funded": "Funded & Guaranteed",
 
+  "choose_language": "Choose Your Language",
+  "lang_hi": "हिंदी (Hindi)",
+  "lang_mr": "मराठी (Marathi)",
+  "lang_en": "English",
+
+  "voice_consent_title": "Voice Consent (DPDP)",
+  "voice_consent_text": "Your voice is used solely to identify your skills and work experience. Audio recordings are never stored or logged anywhere. In Chrome, the browser's Google speech service may process audio.",
+  "voice_consent_agree": "I Agree, Use Voice",
+  "voice_consent_decline": "No, Choose from Icons",
+
+  "voice_screen_title": "Speak your Trade",
+  "voice_prompt": "Tap microphone and speak",
+  "voice_sample_hint": "Example: \"I am a painter with 5 years experience\"",
+  "mic_idle": "Tap to speak",
+  "mic_listening": "Listening... Speak now",
+  "mic_processing": "Processing your voice...",
+  "switch_voice_mode": "Switch Speech Mode",
+  "type_instead": "Type instead of speaking",
+  "no_sound_hint": "No sound detected? Please speak closer to microphone",
+
+  "confirm_screen_title": "Review & Confirm Skills",
+  "detected_skills": "Detected Skills",
+  "suggested_skills": "Did you also mean? (Suggestions)",
+  "add_more_skills": "Add More Skills",
+  "experience_years": "Work Experience",
+  "years_unit": "Years",
+  "transcript_label": "What we heard",
+  "re_extract": "Re-parse Text",
+  "readback_btn": "Listen",
+  "confirm_save": "Looks Good, Save & Continue",
+  "speak_again": "Speak Again",
+  "flag_ambiguous_mistri": "What kind of mistri? (Mason, electrician, carpenter)",
+  "flag_multiple_exp": "Multiple experience numbers heard; please verify years",
+
+  "icon_fallback_title": "Select Skills",
+  "icon_fallback_desc": "Tap icons below to choose your trade and years of experience",
+  "select_at_least_one": "Please select at least 1 skill",
+
+  "location_title": "Work Location",
+  "location_desc": "Set your home location to receive nearby jobs immediately",
+  "use_gps": "Set via GPS",
+  "skip_later": "Skip for now",
+  "onboarding_complete": "Congratulations! Your profile is ready",
+  "go_to_dashboard": "Go to Dashboard",
+  "voice_share_stats": "Voice Onboarding Analytics"
+}

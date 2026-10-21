@@ -75,6 +75,19 @@ All REST responses strictly follow the standardized envelope:
 | `409` | `JOB_HAS_ACTIVE_WORK` | Job cancellation blocked due to active checked-in shifts |
 | `409` | `DISPUTE_ALREADY_RESOLVED` | Dispute has already been arbitrated |
 | `409` | `IDEMPOTENCY_CONFLICT` | Action already executed with identical key |
+| `400` | `CONSENT_REQUIRED` | DPDP consent not granted for voice processing |
+| `400` | `TRANSCRIPT_TOO_LONG` | Transcript input exceeds 500 characters |
+| `400` | `INVALID_SKILLS` | Selected skills count must be 1 to 8 and belong to enum |
+| `400` | `INVALID_EXPERIENCE_YEARS` | Experience years must be an integer between 0 and 50 |
+| `404` | `SESSION_NOT_FOUND` | Voice session does not exist or belongs to another user |
+| `409` | `SESSION_ALREADY_CONFIRMED` | Session was previously confirmed with different skills/exp |
+| `413` | `AUDIO_TOO_LARGE` | Uploaded audio file exceeds 5MB size limit |
+| `415` | `AUDIO_INVALID` | Magic bytes check failed (not valid WAV, WebM, Ogg, MP4, MP3) |
+| `422` | `AUDIO_TOO_LONG` | Audio duration exceeds 30 seconds limit |
+| `422` | `NO_SPEECH_DETECTED` | Audio contains only silence or hallucinated tokens |
+| `502` | `STT_FAILED` | Upstream speech-to-text transcription engine failed |
+| `503` | `VOICE_UNAVAILABLE` | Voice service degraded or offline (carries fallback: "icons") |
+| `504` | `STT_TIMEOUT` | STT processing exceeded timeout limit |
 | `429` | `RATE_LIMIT_EXCEEDED` | Too many requests within rate limit window |
 | `500` | `INTERNAL_SERVER_ERROR` | Unhandled server exception |
 
@@ -795,6 +808,7 @@ All REST responses strictly follow the standardized envelope:
 - `POST /admin/disputes/:id/resolve`: Arbitrate dispute (`FOR_WORKER`, `FOR_CONTRACTOR`, `SPLIT`).
 - `GET /admin/ledger/reconcile`: 5-invariant double-entry reconciliation report (`PASS` / `FAIL`).
 - `GET /admin/stats`: Financial platform KPIs (topups total, locked escrow, released total, open disputes).
+- `GET /admin/voice/stats`: Voice onboarding analytics (voice vs icon share, fallback rate, provider latency, precision and recall over confirmed sessions, language breakdown).
 
 ---
 
@@ -803,6 +817,162 @@ All REST responses strictly follow the standardized envelope:
 - `POST /dev/wallet/topup`: Instant developer credit of ₹5,000 to contractor wallet via double-entry ledger.
 - `POST /dev/escrow/:id/expire-approval`: Backdates `autoApprovalAt` to test scheduler auto-approval.
 - `POST /dev/scheduler/run`: Manually triggers background cron batch (autoApprove, retryPayouts, expireTopups).
+
+---
+
+### 2.18 Voice Onboarding (`/voice`) - Phase 6 (Implemented)
+
+#### 1. Public Skills Catalog
+- **Method & Path**: `GET /voice/skills`
+- **Auth**: Public
+- **Description**: Returns all 16 canonical skills with English, Hindi, Marathi labels, and Lucide icon mappings.
+- **Success Response (200)**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "key": "painter",
+        "labelEn": "Painter (Rangai)",
+        "labelHi": "पेंटर (रंग काम)",
+        "labelMr": "रंगारी (पेंटर)",
+        "icon": "Paintbrush"
+      }
+    ],
+    "error": null
+  }
+  ```
+
+#### 2. Client Voice Configuration
+- **Method & Path**: `GET /voice/config`
+- **Auth**: Authenticated User
+- **Description**: Returns client runtime voice configuration, active STT provider, health status, and supported languages.
+- **Success Response (200)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "enabled": true,
+      "serverSttAvailable": true,
+      "sttProvider": "mock",
+      "maxSeconds": 30,
+      "maxBytes": 5242880,
+      "languages": [
+        { "code": "hi", "label": "हिंदी (Hindi)", "speechLang": "hi-IN" },
+        { "code": "mr", "label": "मराठी (Marathi)", "speechLang": "mr-IN" },
+        { "code": "en", "label": "English", "speechLang": "en-IN" }
+      ],
+      "consentVersion": "v1"
+    },
+    "error": null
+  }
+  ```
+
+#### 3. Voice Onboarding Audio Ingestion (Server Audio Path)
+- **Method & Path**: `POST /voice/onboard`
+- **Auth**: Worker Only
+- **Content-Type**: `multipart/form-data`
+- **Rate Limit**: 10 requests / user / hour
+- **Fields**:
+  - `audio`: Audio file binary (WAV, WebM, Ogg, MP4, MP3 up to 5MB)
+  - `language`: `hi` | `mr` | `en` | `auto`
+  - `consent`: `"true"` (DPDP requirement)
+  - `durationMs`: Client duration hint in ms (optional)
+- **Security & Privacy**: Audio processed entirely in-memory and never written to disk or database.
+- **Success Response (200)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "sessionId": "671240000000000000000001",
+      "transcript": "main painter hoon 5 saal ka experience hai",
+      "language": "hi",
+      "skills": [{ "key": "painter", "confidence": 0.95, "matchedText": "painter" }],
+      "suggestions": [],
+      "experienceYears": 5,
+      "flags": []
+    },
+    "error": null
+  }
+  ```
+
+#### 4. WebSpeech Transcript Extraction (WebSpeech Path)
+- **Method & Path**: `POST /voice/extract`
+- **Auth**: Worker Only
+- **Content-Type**: `application/json`
+- **Rate Limit**: 30 requests / user / hour
+- **Request Body**:
+  ```json
+  {
+    "transcript": "main painter hoon 5 saal ka experience hai",
+    "language": "hi",
+    "consent": true,
+    "source": "webspeech"
+  }
+  ```
+- **Success Response (200)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "sessionId": "671240000000000000000002",
+      "transcript": "main painter hoon 5 saal ka experience hai",
+      "language": "hi",
+      "skills": [{ "key": "painter", "confidence": 0.95, "matchedText": "painter" }],
+      "suggestions": [],
+      "experienceYears": 5,
+      "flags": []
+    },
+    "error": null
+  }
+  ```
+
+#### 5. Confirm Skills & Experience (Draft Finalization)
+- **Method & Path**: `POST /voice/confirm`
+- **Auth**: Worker Only
+- **Description**: The ONLY voice endpoint that writes skills and experience to the `User` document.
+- **Request Body**:
+  ```json
+  {
+    "sessionId": "671240000000000000000001", // Optional for icon fallback
+    "skills": ["painter"],
+    "experienceYears": 5,
+    "method": "SERVER_AUDIO" // or "WEBSPEECH_TEXT" or "ICON_FALLBACK"
+  }
+  ```
+- **Idempotency**: Confirming an already confirmed session with the same payload returns identical `200`; different payload returns `409 SESSION_ALREADY_CONFIRMED`.
+- **Success Response (200)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "session": { ... },
+      "user": {
+        "id": "67123...",
+        "name": "Test Fresh Worker",
+        "skills": ["painter"],
+        "experienceYears": 5,
+        "profileComplete": false // true once non-zero location is set
+      }
+    },
+    "error": null
+  }
+  ```
+
+#### 6. Abandon Session
+- **Method & Path**: `POST /voice/sessions/:id/abandon`
+- **Auth**: Worker Only
+- **Success Response (200)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "sessionId": "671240000000000000000001",
+      "status": "ABANDONED"
+    },
+    "error": null
+  }
+  ```
 
 ---
 
@@ -961,3 +1131,55 @@ function verifyRazorpayWebhook(rawBody, signature, webhookSecret) {
 }
 ```
 Any mismatch returns `400 Bad Request` and logs an incident in `auditlogs`.
+
+---
+
+## 5. Voice-Service Internal API (FastAPI)
+
+These endpoints are internal to the WorkPulse infrastructure (called exclusively by `backend` Express service). Direct browser access is forbidden via `ALLOWED_ORIGINS` and blocked without the `X-Internal-Key` shared secret header.
+
+### 5.1 `GET /health`
+- **Auth**: Public
+- **Response (200)**:
+  ```json
+  {
+    "status": "ok",
+    "service": "voice-service",
+    "sttProvider": "mock",
+    "whisperModelLoaded": false
+  }
+  ```
+
+### 5.2 `POST /extract`
+- **Auth**: Header `X-Internal-Key: <INTERNAL_API_KEY>`
+- **Content-Type**: `application/json`
+- **Request Body**:
+  ```json
+  {
+    "text": "main painter hoon 5 saal ka experience hai",
+    "language": "hi",
+    "allowedSkills": ["painter", "plumber", "electrician", ...]
+  }
+  ```
+- **Response (200)**:
+  ```json
+  {
+    "skills": [{ "key": "painter", "confidence": 0.95, "matchedText": "painter" }],
+    "suggestions": [],
+    "experienceYears": 5,
+    "perSkillYears": {},
+    "flags": [],
+    "normalizedText": "main painter hoon 5 saal ka experience hai"
+  }
+  ```
+
+### 5.3 `POST /onboard`
+- **Auth**: Header `X-Internal-Key: <INTERNAL_API_KEY>`
+- **Content-Type**: `multipart/form-data`
+- **Fields**:
+  - `file`: Audio binary (WAV, WebM, Ogg, MP4, MP3)
+  - `language`: `hi` | `mr` | `en` | `auto`
+  - `allowedSkills`: JSON array string `["painter", "mason", ...]`
+  - `clientDurationMs`: (Optional) duration hint
+- **Response (200)**:
+  Transcribes audio in-memory and extracts skills in a single pipeline. Returns merged `{ text, language, durationSec, provider, latencyMs, skills, suggestions, experienceYears, perSkillYears, flags, normalizedText }`.

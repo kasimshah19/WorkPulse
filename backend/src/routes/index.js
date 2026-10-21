@@ -13,6 +13,7 @@ import adminRoutes from './admin.routes.js';
 import devRoutes from './dev.routes.js';
 import ratingsRoutes from './ratings.routes.js';
 import incidentsRoutes from './incidents.routes.js';
+import voiceRoutes from './voice.routes.js';
 import env from '../config/env.js';
 
 const router = Router();
@@ -40,6 +41,7 @@ router.use('/disputes', disputesRoutes);
 router.use('/admin', adminRoutes);
 router.use('/ratings', ratingsRoutes);
 router.use('/incidents', incidentsRoutes);
+router.use('/voice', voiceRoutes);
 
 // Dev testing routes (disabled in production)
 if (env.nodeEnv !== 'production') {

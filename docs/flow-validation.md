@@ -4,15 +4,22 @@ This document validates the completeness and integrity of the WorkPulse system s
 
 ---
 
-## Flow 1: New Worker Onboarding via Voice
+## Flow 1: New Worker Onboarding via Voice (Re-validated Phase 6)
 
-| Step | Action & User Interaction | Screen | API Endpoint | Collections Touched | State Change |
+| Step | Action & User Interaction | Screen | API Endpoint | Collections Touched | State Change & Data Integrity |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1.1 | Worker opens PWA, picks Hindi language | Screen W1 | `PATCH /users/profile` | `users` | `languagePreference: "hi"` |
-| 1.2 | Enters phone number | Screen W2 | `POST /auth/send-otp` | `otps` | New OTP doc created with hashed value |
-| 1.3 | Enters received SMS OTP | Screen W2 | `POST /auth/verify-otp` | `otps`, `users`, `wallets` | `otps.isUsed: true`, new user created with role `worker`, empty wallet created |
-| 1.4 | Taps Mic, speaks skills & experience in Hindi | Screen W3 | `POST /voice/onboard` | Microservice proxy | Voice transcribed & entity extracted |
-| 1.5 | Reviews extracted skills and taps Save | Screen W3 | `PATCH /users/profile` | `users`, `auditlogs` | `skills: ["masonry"]`, `experienceYears: 5`, `isAvailable: true` |
+| 1.1 | Worker selects language (हिंदी / मराठी / English) | Screen V1 | `PATCH /users/me` | `users` | `languagePreference: "hi"` (or `"mr"` / `"en"`) |
+| 1.2 | Worker reviews DPDP voice privacy notice and taps "Theek hai" | Screen V2 | Client Consent state | None (client memory) | `consent: true` captured in wizard session |
+| 1.3 | **WebSpeech Path**: Worker taps mic, speaks trade & experience | Screen V3 | `POST /voice/extract` | `voicesessions` | Browser produces transcript; voice-service extracts skills. `voicesessions` created (`status: EXTRACTED`, `method: WEBSPEECH_TEXT`). **`User` profile is UNCHANGED (Draft Isolation).** |
+| 1.3b | **Server Audio Path**: Worker records audio via MediaRecorder | Screen V3 | `POST /voice/onboard` | `voicesessions` | In-memory multipart buffer forwarded to Whisper STT. `voicesessions` created (`status: EXTRACTED`, `method: SERVER_AUDIO`). **Zero audio saved to disk/DB.** |
+| 1.4 | **Icon Fallback Path**: If voice fails, mic denied, or user chooses | Screen V5 | Client Fallback state | None | Worker selects from 16-skill icon grid with +/- experience stepper. |
+| 1.5 | Worker reviews chips, adjusts experience years, taps "Sahi hai" | Screen V4 / V5 | `POST /voice/confirm` | `voicesessions`, `users` | **Only here skills are saved!** `users.skills: ["painter"]`, `experienceYears: 5`. `voicesessions.status: CONFIRMED`. |
+| 1.6 | Worker saves GPS location coordinates and optional UPI ID | Screen V6 | `PATCH /users/me/location`<br>`PATCH /users/me/upi` | `users` | `users.location: { type: "Point", coordinates: [lng, lat] }`. Worker **`profileComplete` becomes `true`**. Redirected to `/worker/dashboard`. |
+
+> **Architectural Gaps Found & Resolved (Phase 6)**:
+> 1. *Gap*: Original Phase 1 draft assumed skills were saved immediately during voice upload. *Fix*: In Phase 6, voice output is strictly a DRAFT. Neither `/voice/onboard` nor `/voice/extract` touches the `User` document; skills and years are committed solely when the worker taps "Sahi hai" on `/voice/confirm`.
+> 2. *Gap*: Original design had no privacy-preserving audio handling. *Fix*: Compliant with DPDP Act 2023, audio bytes are never written to disk or DB (memory-only BytesIO/Multer buffers), and session metadata is auto-deleted after 90 days via MongoDB TTL index.
+> 3. *Gap*: No fallback if speech recognition fails. *Fix*: Guaranteed 16-skill icon-grid fallback automatically engages on mic denial, offline voice service (`503 VOICE_UNAVAILABLE`), or user choice.
 
 ---
 

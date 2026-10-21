@@ -12,6 +12,10 @@ import Dispute from './Dispute.js';
 import Notification from './Notification.js';
 import AuditLog from './AuditLog.js';
 
+import PaymentOrder from './PaymentOrder.js';
+import Payout from './Payout.js';
+import VoiceSession from './VoiceSession.js';
+
 export {
   User,
   Otp,
@@ -26,6 +30,9 @@ export {
   Dispute,
   Notification,
   AuditLog,
+  PaymentOrder,
+  Payout,
+  VoiceSession,
 };
 
 export default {
@@ -42,4 +49,7 @@ export default {
   Dispute,
   Notification,
   AuditLog,
+  PaymentOrder,
+  Payout,
+  VoiceSession,
 };

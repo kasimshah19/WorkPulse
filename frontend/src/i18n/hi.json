@@ -46,6 +46,51 @@
   "upi_id": "UPI आईडी",
   "update_upi": "UPI आईडी बदलें",
   "escrow_released": "भुगतान हो गया (Paid & Released)",
-  "escrow_funded": "सुरक्षित जमा (Funded & Guaranteed)"
-}
+  "escrow_funded": "सुरक्षित जमा (Funded & Guaranteed)",
 
+  "choose_language": "अपनी भाषा चुनें (Choose Language)",
+  "lang_hi": "हिंदी (Hindi)",
+  "lang_mr": "मराठी (Marathi)",
+  "lang_en": "English",
+
+  "voice_consent_title": "आवाज़ की अनुमति (Voice Consent)",
+  "voice_consent_text": "आपकी आवाज़ का उपयोग केवल आपके काम (हुनर) और अनुभव को समझने के लिए किया जाता है। आपकी ऑडियो रिकॉर्डिंग को कभी भी कहीं भी सेव या स्टोर नहीं किया जाता। क्रोम ब्राउज़र में आवाज़ Google स्पीच सेवा द्वारा प्रोसेस हो सकती है।",
+  "voice_consent_agree": "ठीक है, बोलकर बताएं (Agree & Speak)",
+  "voice_consent_decline": "नहीं, आइकन से चुनें (Use Icons)",
+
+  "voice_screen_title": "बोलकर बताएं (Speak your Trade)",
+  "voice_prompt": "माइक दबाएं और बोलें",
+  "voice_sample_hint": "ऐसे बोलें: \"मैं पेंटर हूँ, 5 साल का अनुभव है\"",
+  "mic_idle": "माइक दबाकर बोलें",
+  "mic_listening": "सुन रहे हैं... बोलिए",
+  "mic_processing": "आवाज़ समझ रहे हैं...",
+  "switch_voice_mode": "दूसरे तरीके से बोलें (Switch Mode)",
+  "type_instead": "लिखकर बताएं (Type instead)",
+  "no_sound_hint": "आवाज़ नहीं आ रही? माइक के पास बोलें",
+
+  "confirm_screen_title": "जांचें और पुष्टि करें (Confirm Skills)",
+  "detected_skills": "पहचाने गए हुनर (Detected Skills)",
+  "suggested_skills": "क्या आप यह भी काम करते हैं? (Suggestions)",
+  "add_more_skills": "और हुनर जोड़ें (Add More)",
+  "experience_years": "काम का अनुभव (Experience)",
+  "years_unit": "वर्ष (Years)",
+  "transcript_label": "जो हमने सुना (Heard text)",
+  "re_extract": "दोबारा समझें (Re-parse)",
+  "readback_btn": "सुनें (Listen)",
+  "confirm_save": "सही है, सेव करें (Confirm & Save)",
+  "speak_again": "दोबारा बोलें (Speak Again)",
+  "flag_ambiguous_mistri": "मिस्त्री किस काम का? (जैसे राजमिस्त्री या बढ़ई)",
+  "flag_multiple_exp": "अलग-अलग अनुभव मिले हैं, कृपया सही अनुभव चुनें",
+
+  "icon_fallback_title": "अपना हुनर चुनें (Select Skills)",
+  "icon_fallback_desc": "आइकन पर टैप करके अपना काम और अनुभव चुनें",
+  "select_at_least_one": "कम से कम एक हुनर चुनना जरूरी है",
+
+  "location_title": "आपकी लोकेशन (Work Location)",
+  "location_desc": "अपनी लोकेशन सेट करें ताकि आसपास का काम तुरंत मिल सके",
+  "use_gps": "GPS से लोकेशन लें",
+  "skip_later": "बाद में (Skip for now)",
+  "onboarding_complete": "बधाई! आपकी प्रोफाइल तैयार है",
+  "go_to_dashboard": "डैशबोर्ड पर जाएँ (Go to Dashboard)",
+  "voice_share_stats": "वॉइस ऑनबोर्डिंग आँकड़े"
+}

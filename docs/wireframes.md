@@ -389,3 +389,173 @@ flowchart TD
 | +------------------------------+ |
 +----------------------------------+
 ```
+
+---
+
+## Phase 6: Voice Onboarding Wireframes
+
+### Screen V1: Language Selection (अपनी भाषा चुनें)
+- **Route**: `/worker/onboarding` (Step 1)
+- **Purpose**: First screen for new workers to set their native tongue.
+- **Components**: 3 large selection cards (Hindi, Marathi, English).
+
+```text
++----------------------------------+
+| WP WorkPulse              (● ○ ○)|
+|                                  |
+|         [Globe Icon]             |
+|       अपनी भाषा चुनें            |
+|     Choose Your Language         |
+|                                  |
+| +------------------------------+ |
+| | हिंदी (Hindi)                | |
+| | दैनिक काम और हाज़िरी         | |
+| +------------------------------+ |
+|                                  |
+| +------------------------------+ |
+| | मराठी (Marathi)              | |
+| | दैनिक काम आणि हजेरी          | |
+| +------------------------------+ |
+|                                  |
+| +------------------------------+ |
+| | English                      | |
+| | Daily work & attendance      | |
+| +------------------------------+ |
++----------------------------------+
+```
+
+---
+
+### Screen V2: DPDP Voice Consent (आवाज़ की अनुमति)
+- **Route**: `/worker/onboarding` (Step 2)
+- **Purpose**: Compliant DPDP Act 2023 consent informing worker that voice is used only for skills and never stored.
+- **Components**: Shield banner, explicit privacy guarantees, Accept & Speak button, Use Icons button.
+
+```text
++----------------------------------+
+| WP WorkPulse              (● ● ○)|
+|                                  |
+|       [ShieldCheck Icon]         |
+|       आवाज़ की अनुमति            |
+|       Voice Consent (DPDP)       |
+|                                  |
+| आपकी आवाज़ का उपयोग केवल आपके    |
+| हुनर और अनुभव को समझने के लिए    |
+| किया जाता है।                    |
+|                                  |
+| [✓] ऑडियो कभी भी सेव नहीं होगा   |
+| [✓] केवल आपके हुनर की पहचान होगी |
+|                                  |
+| +------------------------------+ |
+| | [Check] ठीक है, बोलकर बताएं  | |
+| +------------------------------+ |
+|                                  |
+| +------------------------------+ |
+| | नहीं, आइकन से चुनें           | |
+| +------------------------------+ |
++----------------------------------+
+```
+
+---
+
+### Screen V3: Speak Your Trade (बोलकर बताएं)
+- **Route**: `/worker/onboarding` (Step 3)
+- **Purpose**: Primary voice input with huge 96px mic button, audio level meter, live transcript, sample prompt.
+- **Components**: 96px pulsating Mic button, Audio level ring, Listen sample button, Dev voice tools.
+
+```text
++----------------------------------+
+| WP WorkPulse              (● ● ●)|
+|                                  |
+|         बोलकर बताएं              |
+|   माइक दबाएं और अपना काम बोलें   |
+|                                  |
+| +------------------------------+ |
+| | उदाहरण: "मैं पेंटर हूँ,      | |
+| | 5 साल का अनुभव है"  [Volume] | |
+| +------------------------------+ |
+|                                  |
+|             ((   ))              |
+|          +---------+             |
+|          |  [MIC]  |             |
+|          |  (96px) |             |
+|          +---------+             |
+|             ((   ))              |
+|                                  |
+|      "सुन रहे हैं... बोलिए"      |
+|    "main painter hoon..."        |
+|                                  |
+| [Dusre tareeke se bolein]        |
+| • [Icon se chunein]              |
+|                                  |
+| [▼ 🧪 Dev voice tools]          |
+| - Type: [main painter hoon] [Run]|
+| - 1-Tap Golden Samples           |
++----------------------------------+
+```
+
+---
+
+### Screen V4: Confirm Detected Skills (जांचें और पुष्टि करें)
+- **Route**: `/worker/onboarding` (Step 4)
+- **Purpose**: Review extracted draft skills, suggestions, adjust experience years with +/- stepper, speaker readback.
+- **API Call**: `POST /voice/confirm`
+
+```text
++----------------------------------+
+| WP WorkPulse              (● ● ●)|
+|                                  |
+| जांचें और पुष्टि करें  [Volume]  |
+|                                  |
+| पहचाने गए हुनर (Detected):       |
+| +-----------------+              |
+| | [Paint] पेंटर ✓ |              |
+| +-----------------+              |
+|                                  |
+| क्या आप यह भी हैं? (Suggestions):|
+| +---------------+                |
+| | [Hammer] मिस्त्री + |          |
+| +---------------+                |
+| [+ और हुनर जोड़ें]               |
+|                                  |
+| काम का अनुभव (Experience):       |
+|       [-]   5 वर्ष   [+]         |
+|                                  |
+| जो हमने सुना (Transcript):       |
+| [main painter hoon 5 saal] [Re]  |
+|                                  |
+| +------------------------------+ |
+| | [Check] सही है, सेव करें     | |
+| +------------------------------+ |
+|          [दोबारा बोलें]          |
++----------------------------------+
+```
+
+---
+
+### Screen V5: Icon Grid Fallback (आइकन से चुनें)
+- **Route**: `/worker/onboarding` (Step 5)
+- **Purpose**: Universal guaranteed fallback when voice fails, mic is denied, or user prefers icons.
+- **Components**: 16-skill grid with Lucide icons, experience stepper, Confirm button.
+
+```text
++----------------------------------+
+| WP WorkPulse              (● ● ●)|
+|                                  |
+|         अपना हुनर चुनें          |
+|   नीचे दिए गए आइकन से काम चुनें  |
+|                                  |
+| [Paint] पेंटर      [Wrench] प्लंबर|
+| [Zap] इलेक्ट्रीशियन [Hammer] मिस्त्री|
+| [Hammer] बढ़ई      [Help] हेल्पर  |
+| [HardHat] मजदूर    [Sparkles]वेल्डर|
+| [Layers] टाइल      [Truck] ड्राइवर|
+|                                  |
+| अनुभव (Experience): [-] 3 yr [+] |
+|                                  |
+| +------------------------------+ |
+| | [Check] सही है, सेव करें     | |
+| +------------------------------+ |
++----------------------------------+
+```
+

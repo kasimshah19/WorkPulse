@@ -1,4 +1,4 @@
-# WorkPulse – Database Schema Specification (Phase 5)
+# WorkPulse – Database Schema Specification (Phase 6)
 
 ---
 
@@ -16,9 +16,9 @@
 
 ---
 
-## 1. Entity-Relationship Overview (15 Collections)
+## 1. Entity-Relationship Overview (16 Collections)
 
-The database consists of 15 MongoDB collections created via Mongoose (lowercase plural).
+The database consists of 16 MongoDB collections created via Mongoose (lowercase plural).
 
 ```mermaid
 erDiagram
@@ -35,6 +35,7 @@ erDiagram
     users ||--o{ auditlogs : "acts as actor"
     users ||--o{ paymentorders : "tops up wallet"
     users ||--o{ payouts : "receives payout"
+    users ||--o{ voicesessions : "onboards / logs"
 
     jobs ||--o{ jobapplications : "receives"
     jobs ||--o{ attendances : "tracks"
@@ -71,6 +72,7 @@ erDiagram
 | `disputes` | Formal arbitration files with uploaded evidence | Low | Permanent |
 | `notifications` | Socket, Push, and SMS notification records | Very High | TTL: 90 Days auto-delete |
 | `auditlogs` | Immutable system event and financial access logs | Very High | 7 Years (Compliance) |
+| `voicesessions` | Voice onboarding transcripts, draft skills, method, and impact metrics | Medium (1 doc / voice attempt) | TTL: 90 Days auto-delete |
 
 ---
 
@@ -754,6 +756,39 @@ erDiagram
 * **Indexes**:
   * `{ idempotencyKey: 1 }` (unique)
   * `{ status: 1, attempts: 1, createdAt: 1 }`
+
+---
+
+### 3.16 `voicesessions`
+**Purpose**: Stores voice onboarding transcripts, extracted draft skills, final confirmed skills, audio metadata, consent timestamps, and impact metrics. Never stores raw audio bytes (DPDP Act 2023 compliant). Auto-deleted via TTL index after 90 days.
+
+| Field Name | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `_id` | ObjectId | Yes | auto | Primary Key |
+| `user` | ObjectId | Yes | - | Ref: `User` (Worker) |
+| `method` | String | Yes | - | Enum: `WEBSPEECH_TEXT`, `SERVER_AUDIO`, `ICON_FALLBACK` |
+| `sttProvider` | String | No | `mock` | STT provider used (`mock`, `faster_whisper`, `openai`, `webspeech`, `none`) |
+| `languageRequested` | String | Yes | `hi` | Language code: `hi`, `mr`, `en`, `auto` |
+| `languageDetected` | String | No | `""` | Language detected by STT engine |
+| `transcript` | String | No | `null` | Recognized text (max 500 chars; null for `ICON_FALLBACK`) |
+| `extractedSkills` | Array | No | `[]` | Draft skills: `[{ key, confidence, matchedText }]` |
+| `extractedExperienceYears` | Number | No | `null` | Parsed experience years (0 - 50) |
+| `finalSkills` | Array | No | `[]` | Confirmed skills saved to User |
+| `finalExperienceYears` | Number | No | `null` | Confirmed experience years saved to User |
+| `status` | String | Yes | `EXTRACTED` | Enum: `EXTRACTED`, `CONFIRMED`, `ABANDONED` |
+| `latencyMs` | Number | No | `0` | STT / extraction processing latency in ms |
+| `audioDurationMs` | Number | No | `0` | Client/decoder audio duration in ms |
+| `consentAt` | Date | No | `null` | Timestamp when worker granted voice consent |
+| `consentVersion` | String | No | `v1` | DPDP consent version |
+| `flags` | Array | No | `[]` | Warning flags (e.g. `AMBIGUOUS_MISTRI`, `MULTIPLE_EXPERIENCE_VALUES`) |
+| `errorCode` | String | No | `null` | Error code if session failed |
+| `createdAt` | Date | Yes | `now` | Creation timestamp |
+| `updatedAt` | Date | Yes | `now` | Last update timestamp |
+
+* **Indexes**:
+  * `{ user: 1, createdAt: -1 }` (user session history query)
+  * `{ status: 1, method: 1 }` (admin precision/recall and voice share aggregations)
+  * `{ createdAt: 1 }` with `{ expireAfterSeconds: 90 * 86400 }` (TTL index: auto-deletes 90 days after creation per DPDP Act 2023)
 
 ---
 

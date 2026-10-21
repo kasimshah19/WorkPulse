@@ -8,13 +8,18 @@ import logger from '../utils/logger.js';
 const errorHandler = (err, req, res, _next) => {
   logger.error(`${err.name || 'Error'}: ${err.message}`);
 
-  const statusCode = err.statusCode || (err.status && typeof err.status === 'number' ? err.status : 500);
-  const message =
+  let statusCode = err.statusCode || (err.status && typeof err.status === 'number' ? err.status : 500);
+  let code = err.code || (statusCode === 404 ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR');
+  let message =
     process.env.NODE_ENV === 'production' && statusCode === 500
       ? 'Internal server error'
       : err.message || 'Internal server error';
 
-  const code = err.code || (statusCode === 404 ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR');
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    statusCode = 413;
+    code = 'AUDIO_TOO_LARGE';
+    message = 'Audio exceeds maximum size limit';
+  }
 
   res.status(statusCode).json({
     success: false,
@@ -22,8 +27,10 @@ const errorHandler = (err, req, res, _next) => {
     error: {
       code,
       message,
+      ...(err.fallback ? { fallback: err.fallback } : {}),
       ...(err.details && typeof err.details === 'object' ? { ...err.details, details: err.details } : (err.details ? { details: err.details } : {})),
     },
+    ...(err.fallback ? { fallback: err.fallback } : {}),
   });
 };
 

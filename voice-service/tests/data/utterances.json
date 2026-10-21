@@ -1,0 +1,387 @@
+[
+  {
+    "id": 1,
+    "text": "main painter hoon, 5 saal ka experience hai",
+    "language": "hi",
+    "expectedSkills": ["painter"],
+    "expectedYears": 5
+  },
+  {
+    "id": 2,
+    "text": "मैं पेंटर हूँ और पाँच साल का अनुभव है",
+    "language": "hi",
+    "expectedSkills": ["painter"],
+    "expectedYears": 5
+  },
+  {
+    "id": 3,
+    "text": "mi painter aahe, pach varshacha anubhav aahe",
+    "language": "mr",
+    "expectedSkills": ["painter"],
+    "expectedYears": 5
+  },
+  {
+    "id": 4,
+    "text": "मी पेंटर आहे, पाच वर्षांचा अनुभव आहे",
+    "language": "mr",
+    "expectedSkills": ["painter"],
+    "expectedYears": 5
+  },
+  {
+    "id": 5,
+    "text": "plumber nahi, painter hoon, 3 saal",
+    "language": "hi",
+    "expectedSkills": ["painter"],
+    "expectedYears": 3
+  },
+  {
+    "id": 6,
+    "text": "raj mistri hoon das saal se kaam kar raha hoon",
+    "language": "hi",
+    "expectedSkills": ["mason"],
+    "expectedYears": 10
+  },
+  {
+    "id": 7,
+    "text": "bijli ka kaam aata hai, wiring karta hoon, 2 saal",
+    "language": "hi",
+    "expectedSkills": ["electrician"],
+    "expectedYears": 2
+  },
+  {
+    "id": 8,
+    "text": "painter aur plumber dono ka kaam karta hoon",
+    "language": "hi",
+    "expectedSkills": ["painter", "plumber"],
+    "expectedYears": null
+  },
+  {
+    "id": 9,
+    "text": "I am an electrician with seven years experience",
+    "language": "en",
+    "expectedSkills": ["electrician"],
+    "expectedYears": 7
+  },
+  {
+    "id": 10,
+    "text": "मजदूर हूँ, नया हूँ, अनुभव नहीं है",
+    "language": "hi",
+    "expectedSkills": ["laborer"],
+    "expectedYears": 0
+  },
+  {
+    "id": 11,
+    "text": "mera naam ramesh hai, main badhai ka kaam karta hoon, 8 saal ka tajurba hai",
+    "language": "hi",
+    "expectedSkills": ["carpenter"],
+    "expectedYears": 8
+  },
+  {
+    "id": 12,
+    "text": "मी सुतार आहे, लाकडी फर्निचर बनवतो, ४ वर्षांचा अनुभव",
+    "language": "mr",
+    "expectedSkills": ["carpenter"],
+    "expectedYears": 4
+  },
+  {
+    "id": 13,
+    "text": "nal mistri aur pipe fitting ka kaam karta hoon 6 saal se",
+    "language": "hi",
+    "expectedSkills": ["plumber"],
+    "expectedYears": 6
+  },
+  {
+    "id": 14,
+    "text": "मी गवंडी काम करतो, चिनाई आणि प्लॅस्टर, दहा वर्षे",
+    "language": "mr",
+    "expectedSkills": ["mason"],
+    "expectedYears": 10
+  },
+  {
+    "id": 15,
+    "text": "welding karta hoon, fabrication ka kaam hai, 4 saal experience",
+    "language": "hi",
+    "expectedSkills": ["welder"],
+    "expectedYears": 4
+  },
+  {
+    "id": 16,
+    "text": "मी वेल्डर आहे, लोखंडी काम करतो, तीन वर्षे",
+    "language": "mr",
+    "expectedSkills": ["welder"],
+    "expectedYears": 3
+  },
+  {
+    "id": 17,
+    "text": "tile lagata hoon, farsh ka kaam hai, char saal se kar raha hoon",
+    "language": "hi",
+    "expectedSkills": ["tile_worker"],
+    "expectedYears": 4
+  },
+  {
+    "id": 18,
+    "text": "मी फरशी कारागीर आहे, मार्बल आणि टाइल्स बसवतो, ५ वर्षे",
+    "language": "mr",
+    "expectedSkills": ["tile_worker"],
+    "expectedYears": 5
+  },
+  {
+    "id": 19,
+    "text": "tile layer hoon, flooring ka kaam aata hai, do saal",
+    "language": "hi",
+    "expectedSkills": ["tile_layer"],
+    "expectedYears": 2
+  },
+  {
+    "id": 20,
+    "text": "site helper hoon, beldar ka kaam karta hoon, fresher hoon",
+    "language": "hi",
+    "expectedSkills": ["helper"],
+    "expectedYears": 0
+  },
+  {
+    "id": 21,
+    "text": "मी मदतनीस आहे, साइटवर मदत करतो, नवीन आहे",
+    "language": "mr",
+    "expectedSkills": ["helper"],
+    "expectedYears": 0
+  },
+  {
+    "id": 22,
+    "text": "sariya bandhne ka kaam karta hoon, bar bender hoon, 6 saal",
+    "language": "hi",
+    "expectedSkills": ["bar_bender"],
+    "expectedYears": 6
+  },
+  {
+    "id": 23,
+    "text": "dhalai ka kaam karta hoon, concrete worker, saat saal ka experience",
+    "language": "hi",
+    "expectedSkills": ["concrete_worker"],
+    "expectedYears": 7
+  },
+  {
+    "id": 24,
+    "text": "gaadi chalata hoon, heavy driver hoon, 12 saal se driving karta hoon",
+    "language": "hi",
+    "expectedSkills": ["driver"],
+    "expectedYears": 12
+  },
+  {
+    "id": 25,
+    "text": "मी चालक आहे, चारचाकी चालवतो, आठ वर्षांचा अनुभव",
+    "language": "mr",
+    "expectedSkills": ["driver"],
+    "expectedYears": 8
+  },
+  {
+    "id": 26,
+    "text": "safai karmchari hoon, office aur building ki safai karta hoon, teen saal",
+    "language": "hi",
+    "expectedSkills": ["cleaner"],
+    "expectedYears": 3
+  },
+  {
+    "id": 27,
+    "text": "mali hoon, bagwani ka pura kaam aata hai, 15 saal ka anubhav",
+    "language": "hi",
+    "expectedSkills": ["gardener"],
+    "expectedYears": 15
+  },
+  {
+    "id": 28,
+    "text": "cook hoon, rasoiya ka kaam karta hoon, hotel me khana banata hoon, bees saal",
+    "language": "hi",
+    "expectedSkills": ["cook"],
+    "expectedYears": 20
+  },
+  {
+    "id": 29,
+    "text": "मी आचारी आहे, उत्तम जेवण बनवतो, १२ वर्षे अनुभव",
+    "language": "mr",
+    "expectedSkills": ["cook"],
+    "expectedYears": 12
+  },
+  {
+    "id": 30,
+    "text": "electrician nahi, raj mistri hoon, 5 saal",
+    "language": "hi",
+    "expectedSkills": ["mason"],
+    "expectedYears": 5
+  },
+  {
+    "id": 31,
+    "text": "carpenter nahi painter hoon, rangai karta hoon, teen saal",
+    "language": "hi",
+    "expectedSkills": ["painter"],
+    "expectedYears": 3
+  },
+  {
+    "id": 32,
+    "text": "haan bhaiya main na penter hoon... deewar paint karta hoon paanch saal se",
+    "language": "hi",
+    "expectedSkills": ["painter"],
+    "expectedYears": 5
+  },
+  {
+    "id": 33,
+    "text": "wiring aur bijli fitting ka pura kaam, 4 saal experience",
+    "language": "hi",
+    "expectedSkills": ["electrician"],
+    "expectedYears": 4
+  },
+  {
+    "id": 34,
+    "text": "राजमिस्त्री का काम करता हूँ, चिनाई और जोड़ाई, ८ साल",
+    "language": "hi",
+    "expectedSkills": ["mason"],
+    "expectedYears": 8
+  },
+  {
+    "id": 35,
+    "text": "I am a skilled carpenter with 10 years in furniture making",
+    "language": "en",
+    "expectedSkills": ["carpenter"],
+    "expectedYears": 10
+  },
+  {
+    "id": 36,
+    "text": "I do plumbing and sanitary fittings, three years experience",
+    "language": "en",
+    "expectedSkills": ["plumber"],
+    "expectedYears": 3
+  },
+  {
+    "id": 37,
+    "text": "Experienced welder, structural steel work, five years",
+    "language": "en",
+    "expectedSkills": ["welder"],
+    "expectedYears": 5
+  },
+  {
+    "id": 38,
+    "text": "Commercial driver with valid license, eight years experience",
+    "language": "en",
+    "expectedSkills": ["driver"],
+    "expectedYears": 8
+  },
+  {
+    "id": 39,
+    "text": "General construction laborer, 1 year experience",
+    "language": "en",
+    "expectedSkills": ["laborer"],
+    "expectedYears": 1
+  },
+  {
+    "id": 40,
+    "text": "रंगारी आहे, घरातले कलरकाम करतो, सात वर्षे",
+    "language": "mr",
+    "expectedSkills": ["painter"],
+    "expectedYears": 7
+  },
+  {
+    "id": 41,
+    "text": "नळ कारागीर आहे, बाथरुम आणि पाईप फिटिंग, ९ वर्षे",
+    "language": "mr",
+    "expectedSkills": ["plumber"],
+    "expectedYears": 9
+  },
+  {
+    "id": 42,
+    "text": "वीज कामगार आहे, घरगुती वायरिंग, २ वर्षे अनुभव",
+    "language": "mr",
+    "expectedSkills": ["electrician"],
+    "expectedYears": 2
+  },
+  {
+    "id": 43,
+    "text": "carpenter aur painter dono karta hoon, 4 saal",
+    "language": "hi",
+    "expectedSkills": ["carpenter", "painter"],
+    "expectedYears": 4
+  },
+  {
+    "id": 44,
+    "text": "plumber nahi balki electrician hoon, bijli mistri 5 saal",
+    "language": "hi",
+    "expectedSkills": ["electrician"],
+    "expectedYears": 5
+  },
+  {
+    "id": 45,
+    "text": "beldar ka kaam karta hoon majdoori karta hoon, 2 saal",
+    "language": "hi",
+    "expectedSkills": ["laborer", "helper"],
+    "expectedYears": 2
+  },
+  {
+    "id": 46,
+    "text": "gardener and cleaner, landscaping work, 6 years",
+    "language": "en",
+    "expectedSkills": ["gardener", "cleaner"],
+    "expectedYears": 6
+  },
+  {
+    "id": 47,
+    "text": "tile worker aur marble fitting, 11 saal ka experience",
+    "language": "hi",
+    "expectedSkills": ["tile_worker"],
+    "expectedYears": 11
+  },
+  {
+    "id": 48,
+    "text": "safai ka kaam, jhadu pocha, naya hoon koi anubhav nahi",
+    "language": "hi",
+    "expectedSkills": ["cleaner"],
+    "expectedYears": 0
+  },
+  {
+    "id": 49,
+    "text": "सुतारकाम करतो, फर्निचर, सहा वर्षांचा अनुभव आहे",
+    "language": "mr",
+    "expectedSkills": ["carpenter"],
+    "expectedYears": 6
+  },
+  {
+    "id": 50,
+    "text": "raj mistri, chinai jodai, bees saal se kar raha hoon",
+    "language": "hi",
+    "expectedSkills": ["mason"],
+    "expectedYears": 20
+  },
+  {
+    "id": 51,
+    "text": "6 mahine se painter ka kaam seekh raha hoon",
+    "language": "hi",
+    "expectedSkills": ["painter"],
+    "expectedYears": 0
+  },
+  {
+    "id": 52,
+    "text": "bar bender sariya fitting, teen saal ka tajurba",
+    "language": "hi",
+    "expectedSkills": ["bar_bender"],
+    "expectedYears": 3
+  },
+  {
+    "id": 53,
+    "text": "कुक आहे, रसोइया, पंधरा वर्षे अनुभव",
+    "language": "mr",
+    "expectedSkills": ["cook"],
+    "expectedYears": 15
+  },
+  {
+    "id": 54,
+    "text": "welder and fabricator with four years experience",
+    "language": "en",
+    "expectedSkills": ["welder"],
+    "expectedYears": 4
+  },
+  {
+    "id": 55,
+    "text": "concrete casting worker, dhalai mistri, 5 years",
+    "language": "en",
+    "expectedSkills": ["concrete_worker"],
+    "expectedYears": 5
+  }
+]
