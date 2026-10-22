@@ -1,8 +1,24 @@
 <div align="center">
 
-<h1 align="center">WorkPulse</h1>
+<h1 align="center">⚡ WorkPulse</h1>
 
-> **Direct micro-contracting, biometric proof-of-work, and escrow payment platform engineered for daily-wage and blue-collar workers in India.**
+### *Paseena Sookhne Se Pehle, Mehnat Ka Paisa Khaate Mein.*  
+**पसीना सूखने से पहले, मेहनत का पैसा सीधे खाते में।**
+
+<p align="center">
+  <b>Re-architecting trust, dignity, and financial sovereignty for India's 450M+ daily-wage & blue-collar workforce.</b><br/>
+  An autonomous, zero-middleman micro-contracting platform replacing verbal exploitation with <b>Pre-Funded Escrow</b>, <b>Biometric Geofenced Proof-of-Work</b>, <b>Double-Blind Anti-Retaliation Ratings</b>, and <b>Multilingual Voice AI</b>.
+</p>
+
+<p align="center">
+  <b>🛡️ 100% Pre-Funded Escrow</b> &nbsp;•&nbsp; 
+  <b>⏱️ Guaranteed 24h Auto-Approval</b> &nbsp;•&nbsp; 
+  <b>⚡ Instant UPI Bank Disbursal</b> &nbsp;•&nbsp; 
+  <b>📍 100m Geofenced Proof-of-Work</b> &nbsp;•&nbsp; 
+  <b>🎙️ Zero-Typing Voice Onboarding</b>
+</p>
+
+<br/>
 
 <!-- 20+ Curated Shields.io Badges -->
 [![Release](https://img.shields.io/badge/Release-v0.8-0ea5e9?style=for-the-badge&logo=git&logoColor=white)](https://github.com/kasimshah19/WorkPulse/releases/tag/v0.8)
