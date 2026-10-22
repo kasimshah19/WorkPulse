@@ -23,7 +23,7 @@
 <!-- 20+ Curated Shields.io Badges -->
 [![Release](https://img.shields.io/badge/Release-v0.8-0ea5e9?style=for-the-badge&logo=git&logoColor=white)](https://github.com/kasimshah19/WorkPulse/releases/tag/v0.8)
 [![CI Pipeline](https://img.shields.io/badge/CI%20Pipeline-Passing-10b981?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/kasimshah19/WorkPulse/actions)
-[![License](https://img.shields.io/badge/License-Proprietary-64748b?style=for-the-badge)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 <br/>
 
@@ -483,5 +483,5 @@ For testing and demonstration, use the automated seeder (`npm run seed:demo`):
 
 ## 📄 License & Attribution
 
-WorkPulse is developed as an enterprise-grade direct contracting and fintech platform for unorganized workers in India.  
-Copyright © 2026 WorkPulse Platform. All rights reserved.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.  
+Copyright © 2026 Kasim Shah & WorkPulse Contributors. All rights reserved.
