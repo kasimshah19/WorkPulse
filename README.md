@@ -73,17 +73,11 @@ India has over **450 million unorganized daily-wage and blue-collar workers** (c
 
 ```mermaid
 flowchart LR
-    A["🌅 Stand at Naka at 6 AM<br/><i>No Job Guarantee</i>"] --> B["🤝 Verbal Agreement<br/><i>No Written Proof</i>"]
-    B --> C["🔨 10 Hours Hard Labor<br/><i>Hazardous Conditions</i>"]
-    C --> D["❌ Delayed / Slashed Pay<br/><i>Wage Theft Trap</i>"]
-    D --> E["💸 Borrow from Loan Sharks<br/><i>5% - 10% Monthly APR</i>"]
-    E -.->|Vicious Cycle Repeats| A
-
-    style A fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
-    style B fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style C fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
-    style D fill:#1e293b,stroke:#dc2626,stroke-width:2px,color:#fff
-    style E fill:#1e293b,stroke:#b91c1c,stroke-width:2px,color:#fff
+    A["Stand at Naka (6:00 AM)<br>(Zero Job Guarantee)"] --> B["Verbal Agreement<br>(Zero Written Proof)"]
+    B --> C["10 Hours Hard Labor<br>(Hazardous Conditions)"]
+    C --> D["Delayed or Slashed Pay<br>(Wage Theft Risk)"]
+    D --> E["Debt to Loan Sharks<br>(5-10% Monthly Interest)"]
+    E -->|Vicious Cycle Repeats| A
 ```
 
 #### 1.1 The "Labour Chowk / Naka" Inefficiency
@@ -121,20 +115,12 @@ WorkPulse fundamentally re-engineers daily-wage contracting by removing interper
 
 ```mermaid
 flowchart LR
-    A["🎙️ Voice Match at Home<br/><i>Zero Naka Waiting</i>"] --> B["🛡️ Pre-Funded Escrow<br/><i>Wages 100% Locked</i>"]
-    B --> C["📍 Geofenced Check-In<br/><i>100m GPS + Selfie</i>"]
-    C --> D["⏱️ 24h Auto-Approval<br/><i>Silence = Release</i>"]
-    D --> E["⚡ Instant UPI Disbursal<br/><i>Direct to Bank</i>"]
-    E --> F["🤝 Double-Blind Ratings<br/><i>Anti-Retaliation</i>"]
-    F -.-> G["📜 Digital Proof-of-Work<br/><i>Bank Credit & Loans</i>"]
-
-    style A fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff
-    style B fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff
-    style C fill:#0f172a,stroke:#6366f1,stroke-width:2px,color:#fff
-    style D fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style E fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff
-    style F fill:#0f172a,stroke:#a855f7,stroke-width:2px,color:#fff
-    style G fill:#0f172a,stroke:#0ea5e9,stroke-width:2px,color:#fff
+    A["Voice Match at Home<br>(Zero Naka Waiting)"] --> B["Pre-Funded Escrow<br>(Wages 100% Locked)"]
+    B --> C["Geofenced Check-In<br>(100m GPS + Selfie)"]
+    C --> D["24h Auto-Approval<br>(Silence = Release)"]
+    D --> E["Instant UPI Disbursal<br>(Direct to Bank Wallet)"]
+    E --> F["Double-Blind Ratings<br>(Anti-Retaliation Guard)"]
+    F --> G["Digital Proof-of-Work<br>(Institutional Credit Score)"]
 ```
 
 #### 2.1 Guaranteed Pre-Funded Daily Escrow (`ESCROW_HOLD` Engine)
@@ -214,37 +200,38 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph ClientLayer ["Client Layer: Mobile-First PWA (Next.js 14)"]
-        WorkerClient["Worker PWA (360px Optimized)<br/>• Hindi / Marathi / English UI<br/>• Offline Cache Boundary (sw.js)<br/>• Web Audio / MediaRecorder API"]
-        ContractorClient["Contractor Web Portal<br/>• Live Geofence Mapping (Leaflet)<br/>• Escrow Top-up (Razorpay)<br/>• Instant Shift Sign-off"]
-        AdminPortal["Platform Admin Dashboard<br/>• Dispute Arbitration (Evidence Inspector)<br/>• Live SOS Emergency Radar<br/>• Ledger Reconciliation Engine"]
+    subgraph ClientLayer ["Client Layer (Mobile-First PWA)"]
+        WorkerClient["Worker PWA (360px Optimized)<br>Hindi, Marathi, English UI<br>Offline Cache Boundary (sw.js)"]
+        ContractorClient["Contractor Web Portal<br>Live Geofence Mapping (Leaflet)<br>Escrow Top-up (Razorpay)"]
+        AdminPortal["Platform Admin Dashboard<br>Dispute Arbitration Inspector<br>Live SOS Emergency Radar"]
     end
 
-    subgraph EdgeLayer ["Edge Security & Gateway"]
-        EdgeGateway["Edge Security & Gateway<br/>• Rate Limiting (Redis / In-Memory)<br/>• Dual-Token Rotation Interceptor<br/>• CSRF X-Requested-With Protection"]
+    subgraph EdgeLayer ["Edge Security and Gateway"]
+        EdgeGateway["Edge Security and Gateway<br>Rate Limiting (Redis / In-Memory)<br>Dual-Token Rotation Interceptor"]
     end
 
     subgraph ServiceLayer ["Application Microservices"]
-        BackendAPI["WorkPulse Core Backend (Node.js & Express)<br/>• REST API (/api/v1)<br/>• Real-time Socket.io Gateway<br/>• Escrow State Machine Engine<br/>• Double-Entry Ledger Service<br/>• Cron Schedulers"]
-        VoiceService["Voice Microservice (Python FastAPI)<br/>• OpenAI Whisper STT Engine<br/>• Hindi/Marathi Skill Normalizer<br/>• DPDP Compliant (In-Memory Buffer)"]
+        BackendAPI["WorkPulse Core Backend (Node.js and Express)<br>REST API (/api/v1) and Socket.io<br>Escrow State Machine and Ledger Engine"]
+        VoiceService["Voice Microservice (Python FastAPI)<br>OpenAI Whisper STT Engine<br>Skill Normalizer (In-Memory Buffer)"]
     end
 
-    subgraph DataLayer ["Persistence & State"]
-        MongoDB[("MongoDB 7.0 Atlas Replica Set<br/>• 17 Normalized Collections<br/>• Geospatial 2dsphere Indexes<br/>• ACID Transactions (Multi-doc Sessions)<br/>• TTL-Indexed Refresh Tokens")]
+    subgraph DataLayer ["Persistence and State"]
+        MongoDB[("MongoDB 7.0 Atlas Replica Set<br>17 Normalized Collections<br>Geospatial 2dsphere Indexes<br>ACID Multi-doc Transactions")]
     end
 
     subgraph ExternalGateways ["External Cloud Services"]
-        Razorpay["Razorpay Gateway<br/>• Escrow Funding via UPI/Cards<br/>• Automated UPI Payout Disbursals"]
-        SMS["SMS Gateway (MSG91 / Twilio)<br/>• OTP Delivery & SMS Fallback Alerts"]
-        ObjectStorage["Cloud Object Storage (S3 / R2)<br/>• Attendance Selfies & Dispute Evidence"]
+        Razorpay["Razorpay Gateway<br>Escrow Funding and UPI Payouts"]
+        SMS["SMS Gateway (MSG91 / Twilio)<br>OTP Delivery and Alerts"]
+        ObjectStorage["Cloud Object Storage (S3 / R2)<br>Attendance Selfies and Evidence"]
     end
 
     WorkerClient -->|HTTPS / WSS| EdgeGateway
     ContractorClient -->|HTTPS / WSS| EdgeGateway
     AdminPortal -->|HTTPS / WSS| EdgeGateway
     EdgeGateway --> BackendAPI
-    BackendAPI <-->|Internal HMAC Auth REST| VoiceService
-    BackendAPI <-->|Mongoose Pool / ReplicaSet| MongoDB
+    BackendAPI -->|Internal HMAC REST| VoiceService
+    VoiceService -->|Extracted Skills| BackendAPI
+    BackendAPI -->|Mongoose Pool| MongoDB
     BackendAPI --> Razorpay
     BackendAPI --> SMS
     BackendAPI --> ObjectStorage
@@ -261,19 +248,19 @@ Financial safety is the foundation of WorkPulse. Money never moves without an im
 stateDiagram-v2
     direction LR
     [*] --> CREATED: Contractor Drafts Job
-    CREATED --> FUNDED: Contractor Funds Escrow (UPI/Cards)
-    FUNDED --> CHECKED_IN: Worker Clocks In (100m GPS + Selfie)
-    CHECKED_IN --> CHECKED_OUT: Worker Clocks Out (Shift Completed)
+    CREATED --> FUNDED: Contractor Funds Escrow
+    FUNDED --> CHECKED_IN: Worker Clocks In (100m GPS)
+    CHECKED_IN --> CHECKED_OUT: Worker Clocks Out
     
     CHECKED_OUT --> APPROVED: Contractor Approves Shift
-    CHECKED_OUT --> APPROVED: 24h Window Expires (Auto-Approval)
+    CHECKED_OUT --> APPROVED: 24h Window Expires
     
-    APPROVED --> RELEASED: Instant Ledger Credit & UPI Disbursal
+    APPROVED --> RELEASED: Instant Disbursal via UPI
     
-    CHECKED_OUT --> DISPUTED: Dispute Raised (Worker / Contractor)
+    CHECKED_OUT --> DISPUTED: Dispute Raised
     
-    DISPUTED --> RELEASED: Admin Resolves: Worker / 50% Split
-    DISPUTED --> REFUNDED: Admin Resolves: Contractor / 50% Split
+    DISPUTED --> RELEASED: Admin Resolves for Worker
+    DISPUTED --> REFUNDED: Admin Resolves for Contractor
     
     RELEASED --> [*]
     REFUNDED --> [*]
