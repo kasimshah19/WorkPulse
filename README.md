@@ -71,15 +71,19 @@
 
 India has over **450 million unorganized daily-wage and blue-collar workers** (carpenters, electricians, masons, painters, plumbers, welders, tile workers, and construction laborers). Despite forming the backbone of the national infrastructure economy, this sector operates under archaic, predatory, and trust-deficient conditions.
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                        THE CYCLE OF DAILY WAGE EXPLOITATION                            │
-│                                                                                        │
-│  Stand at Naka at 6 AM ──► Verbal Agreement ──► 10 Hours Hard Labor ──► Delayed / Cut  │
-│  (No Job Guarantee)         (No Written Proof)   (Hazardous Conditions)  Payment       │
-│         ▲                                                                      │       │
-│         └────────────── Borrow from Loan Sharks (5% monthly) ◄─────────────────┘       │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A["🌅 Stand at Naka at 6 AM<br/><i>No Job Guarantee</i>"] --> B["🤝 Verbal Agreement<br/><i>No Written Proof</i>"]
+    B --> C["🔨 10 Hours Hard Labor<br/><i>Hazardous Conditions</i>"]
+    C --> D["❌ Delayed / Slashed Pay<br/><i>Wage Theft Trap</i>"]
+    D --> E["💸 Borrow from Loan Sharks<br/><i>5% - 10% Monthly APR</i>"]
+    E -.->|Vicious Cycle Repeats| A
+
+    style A fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style B fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style C fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style D fill:#1e293b,stroke:#dc2626,stroke-width:2px,color:#fff
+    style E fill:#1e293b,stroke:#b91c1c,stroke-width:2px,color:#fff
 ```
 
 #### 1.1 The "Labour Chowk / Naka" Inefficiency
@@ -115,16 +119,22 @@ India has over **450 million unorganized daily-wage and blue-collar workers** (c
 
 WorkPulse fundamentally re-engineers daily-wage contracting by removing interpersonal friction and replacing verbal trust with **cryptographic, financial, and spatial guarantees**.
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                              THE WORKPULSE TRUST PARADIGM                              │
-│                                                                                        │
-│  Voice Match at Home ──► Pre-Funded Escrow ──► Geofenced Check-In ──► Auto-Approval    │
-│  (Zero Naka Waiting)     (Wages 100% Locked)    (100m GPS + Selfie)     (Direct UPI)   │
-│         │                                                                      │       │
-│         └────────── Double-Blind Reviews ◄── Financial Proof-of-Work ◄────────┘       │
-│                     (Zero Retaliation)       (Institutional Credit)                    │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A["🎙️ Voice Match at Home<br/><i>Zero Naka Waiting</i>"] --> B["🛡️ Pre-Funded Escrow<br/><i>Wages 100% Locked</i>"]
+    B --> C["📍 Geofenced Check-In<br/><i>100m GPS + Selfie</i>"]
+    C --> D["⏱️ 24h Auto-Approval<br/><i>Silence = Release</i>"]
+    D --> E["⚡ Instant UPI Disbursal<br/><i>Direct to Bank</i>"]
+    E --> F["🤝 Double-Blind Ratings<br/><i>Anti-Retaliation</i>"]
+    F -.-> G["📜 Digital Proof-of-Work<br/><i>Bank Credit & Loans</i>"]
+
+    style A fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style B fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff
+    style C fill:#0f172a,stroke:#6366f1,stroke-width:2px,color:#fff
+    style D fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style E fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff
+    style F fill:#0f172a,stroke:#a855f7,stroke-width:2px,color:#fff
+    style G fill:#0f172a,stroke:#0ea5e9,stroke-width:2px,color:#fff
 ```
 
 #### 2.1 Guaranteed Pre-Funded Daily Escrow (`ESCROW_HOLD` Engine)
@@ -204,33 +214,35 @@ WorkPulse fundamentally re-engineers daily-wage contracting by removing interper
 
 ```mermaid
 flowchart TB
-    subgraph ClientLayer [Client Layer - Mobile-First PWA (Next.js 14)]
+    subgraph ClientLayer ["Client Layer: Mobile-First PWA (Next.js 14)"]
         WorkerClient["Worker PWA (360px Optimized)<br/>• Hindi / Marathi / English UI<br/>• Offline Cache Boundary (sw.js)<br/>• Web Audio / MediaRecorder API"]
         ContractorClient["Contractor Web Portal<br/>• Live Geofence Mapping (Leaflet)<br/>• Escrow Top-up (Razorpay)<br/>• Instant Shift Sign-off"]
         AdminPortal["Platform Admin Dashboard<br/>• Dispute Arbitration (Evidence Inspector)<br/>• Live SOS Emergency Radar<br/>• Ledger Reconciliation Engine"]
     end
 
-    subgraph EdgeLayer [Edge Security & Reverse Proxy]
+    subgraph EdgeLayer ["Edge Security & Gateway"]
         EdgeGateway["Edge Security & Gateway<br/>• Rate Limiting (Redis / In-Memory)<br/>• Dual-Token Rotation Interceptor<br/>• CSRF X-Requested-With Protection"]
     end
 
-    subgraph ServiceLayer [Application Microservices]
-        BackendAPI["WorkPulse Core Backend (Node.js & Express)<br/>• REST API (/api/v1)<br/>• Real-time Socket.io Gateway<br/>• Escrow State Machine Engine<br/>• Double-Entry Ledger Service<br/>• Cron Schedulers (Attendance/Escrow/Safety)"]
-        VoiceService["Voice Microservice (Python FastAPI)<br/>• OpenAI Whisper STT Engine<br/>• Hindi/Marathi Skill Normalizer<br/>• DPDP Compliant (In-Memory Buffer Only)"]
+    subgraph ServiceLayer ["Application Microservices"]
+        BackendAPI["WorkPulse Core Backend (Node.js & Express)<br/>• REST API (/api/v1)<br/>• Real-time Socket.io Gateway<br/>• Escrow State Machine Engine<br/>• Double-Entry Ledger Service<br/>• Cron Schedulers"]
+        VoiceService["Voice Microservice (Python FastAPI)<br/>• OpenAI Whisper STT Engine<br/>• Hindi/Marathi Skill Normalizer<br/>• DPDP Compliant (In-Memory Buffer)"]
     end
 
-    subgraph DataLayer [Persistence & State]
-        MongoDB[("MongoDB 7.0 Atlas Replica Set<br/>• 17 Normalized Collections<br/>• Geospatial 2dsphere Indexes<br/>• ACID Transactions (Multi-doc Sessions)<br/>• TTL-Indexed Refresh Tokens & OTPs")]
+    subgraph DataLayer ["Persistence & State"]
+        MongoDB[("MongoDB 7.0 Atlas Replica Set<br/>• 17 Normalized Collections<br/>• Geospatial 2dsphere Indexes<br/>• ACID Transactions (Multi-doc Sessions)<br/>• TTL-Indexed Refresh Tokens")]
     end
 
-    subgraph ExternalGateways [External Cloud Services]
+    subgraph ExternalGateways ["External Cloud Services"]
         Razorpay["Razorpay Gateway<br/>• Escrow Funding via UPI/Cards<br/>• Automated UPI Payout Disbursals"]
         SMS["SMS Gateway (MSG91 / Twilio)<br/>• OTP Delivery & SMS Fallback Alerts"]
         ObjectStorage["Cloud Object Storage (S3 / R2)<br/>• Attendance Selfies & Dispute Evidence"]
     end
 
-    ClientLayer -->|HTTPS / WSS| EdgeLayer
-    EdgeLayer --> BackendAPI
+    WorkerClient -->|HTTPS / WSS| EdgeGateway
+    ContractorClient -->|HTTPS / WSS| EdgeGateway
+    AdminPortal -->|HTTPS / WSS| EdgeGateway
+    EdgeGateway --> BackendAPI
     BackendAPI <-->|Internal HMAC Auth REST| VoiceService
     BackendAPI <-->|Mongoose Pool / ReplicaSet| MongoDB
     BackendAPI --> Razorpay
@@ -245,19 +257,26 @@ flowchart TB
 ### 1. Escrow State Machine & Double-Entry Ledger
 Financial safety is the foundation of WorkPulse. Money never moves without an immutable ledger entry.
 
-```
-[ CREATED ] ──( Contractor Funds )──► [ FUNDED ] ──( Worker Check-In )──► [ CHECKED_IN ]
-                                                                                │
-                                                                         ( Worker Check-Out )
-                                                                                │
-                                                                                ▼
-[ RELEASED ] ◄──( Contractor Approves / 24h Auto-Approval )─────────── [ CHECKED_OUT ]
-     ▲                                                                          │
-     │                                                                   ( Dispute Raised )
-     │                                                                          │
-     └──────( Admin Arbitrates: Worker / Split )────── [ DISPUTED ] ◄───────────┘
-                                                           │
-                                                           └──( Admin Arbitrates: Refund )──► [ REFUNDED ]
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> CREATED: Contractor Drafts Job
+    CREATED --> FUNDED: Contractor Funds Escrow (UPI/Cards)
+    FUNDED --> CHECKED_IN: Worker Clocks In (100m GPS + Selfie)
+    CHECKED_IN --> CHECKED_OUT: Worker Clocks Out (Shift Completed)
+    
+    CHECKED_OUT --> APPROVED: Contractor Approves Shift
+    CHECKED_OUT --> APPROVED: 24h Window Expires (Auto-Approval)
+    
+    APPROVED --> RELEASED: Instant Ledger Credit & UPI Disbursal
+    
+    CHECKED_OUT --> DISPUTED: Dispute Raised (Worker / Contractor)
+    
+    DISPUTED --> RELEASED: Admin Resolves: Worker / 50% Split
+    DISPUTED --> REFUNDED: Admin Resolves: Contractor / 50% Split
+    
+    RELEASED --> [*]
+    REFUNDED --> [*]
 ```
 
 - **Zero-Sum Ledger**: Every transaction requires a `groupId`. Debits must strictly equal credits ($\sum \text{Debit} = \sum \text{Credit}$).
