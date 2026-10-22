@@ -1,6 +1,6 @@
-# WorkPulse
-
 <div align="center">
+
+<h1 align="center">WorkPulse</h1>
 
 > **Direct micro-contracting, biometric proof-of-work, and escrow payment platform engineered for daily-wage and blue-collar workers in India.**
 
