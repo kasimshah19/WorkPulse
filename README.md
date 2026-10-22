@@ -491,3 +491,21 @@ For testing and demonstration, use the automated seeder (`npm run seed:demo`):
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.  
 Copyright © 2026 Kasim Shah & WorkPulse Contributors. All rights reserved.
+
+---
+
+## 👨‍💻 Author & Connect
+
+**Author:** Kasim Shah  
+
+Connect with me:
+- **Portfolio:** [kasim-portfolio-umber.vercel.app](https://kasim-portfolio-umber.vercel.app/)
+- **LinkedIn:** [Kasim Shah](https://www.linkedin.com/in/kasim-shah-176175340/)
+- **GitHub:** [@kasimshah19](https://github.com/kasimshah19)
+
+<br/>
+
+<div align="center">
+  <p>© 2026 Al-Hayat Diagnostic Lab — All rights reserved</p>
+</div>
+
