@@ -11,26 +11,22 @@ jobs:
     name: Backend Tests & Invariant Audit
     runs-on: ubuntu-latest
 
-    services:
-      mongodb:
-        image: mongo:7.0
-        ports:
-          - 27017:27017
-        options: >-
-          --name mongodb
-          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Initialize MongoDB Replica Set
+      - name: Start MongoDB Replica Set
         run: |
-          docker exec mongodb mongosh --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })' || true
+          docker run -d --name mongodb -p 27017:27017 mongo:7.0 mongod --replSet rs0 --bind_ip_all
+          until docker exec mongodb mongosh --eval "db.runCommand({ ping: 1 })" >/dev/null 2>&1; do
+            echo "Waiting for MongoDB to accept connections..."
+            sleep 1
+          done
+          echo "Initiating replica set rs0..."
+          docker exec mongodb mongosh --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })'
           sleep 3
+          docker exec mongodb mongosh --eval 'rs.status().ok'
+          echo "MongoDB replica set rs0 ready."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -50,6 +46,7 @@ jobs:
       - name: Run Database Index & Query Plan Audit
         working-directory: backend
         env:
+          MONGO_URI: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
           MONGO_URI_TEST: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
         run: npm run audit:indexes
 
@@ -57,6 +54,7 @@ jobs:
         working-directory: backend
         env:
           NODE_ENV: test
+          MONGO_URI: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
           MONGO_URI_TEST: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
           JWT_SECRET: ci-testing-jwt-secret-key-32chars-min
         run: npm test
@@ -64,6 +62,7 @@ jobs:
       - name: Run Double-Entry Ledger Reconciliation Audit
         working-directory: backend
         env:
+          MONGO_URI: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
           MONGO_URI_TEST: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
         run: npm run reconcile
 
@@ -90,7 +89,9 @@ jobs:
 
       - name: Run Pytest Suite
         working-directory: voice-service
-        run: pytest -v
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -v
 
   frontend:
     name: Frontend Build & Type Validation

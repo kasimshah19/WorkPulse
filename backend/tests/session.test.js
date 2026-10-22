@@ -63,7 +63,6 @@ describe('Phase 8: Sessions, Access Tokens & Rotating Refresh Tokens', () => {
     if (workerUser && contractorUser && deactivatedUser) {
       await RefreshToken.deleteMany({ user: { $in: [workerUser._id, contractorUser._id, deactivatedUser._id] } });
     }
-    await mongoose.connection.close();
   });
 
   test('Access token validation: valid token grants access to /auth/me', async () => {

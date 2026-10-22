@@ -62,7 +62,6 @@ describe('WorkPulse Phase 5: Escrow, Payments, Ledger & Disputes Suite', () => {
 
   afterAll(async () => {
     clock.reset();
-    await mongoose.connection.close();
   });
 
   beforeEach(async () => {

@@ -15,7 +15,7 @@ describe('Phase 8: Structured JSON Logger & Sensitive Data Redaction', () => {
   });
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    // Keep connection alive across shared in-band test execution
   });
 
   test('maskPhone masks middle digits of Indian phone numbers', () => {

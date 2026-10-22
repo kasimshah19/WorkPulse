@@ -64,7 +64,6 @@ describe('WorkPulse Phase 4: Attendance, Proof-of-Work, Geofencing & Sign-Off Su
   afterAll(async () => {
     env.attendanceRequireFunding = originalFundingReq;
     clock.reset();
-    await mongoose.connection.close();
   });
 
   beforeEach(async () => {
