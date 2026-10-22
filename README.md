@@ -506,6 +506,6 @@ Connect with me:
 <br/>
 
 <div align="center">
-  <p>© 2026 Al-Hayat Diagnostic Lab — All rights reserved</p>
+  <p>© 2026 WorkPulse • Kasim Shah — All rights reserved</p>
 </div>
 
