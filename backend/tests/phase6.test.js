@@ -156,7 +156,6 @@ describe('Phase 6: Voice Onboarding Test Suite', () => {
     if (stubServer) {
       await new Promise((resolve) => stubServer.close(resolve));
     }
-    await mongoose.disconnect();
   });
 
   beforeEach(async () => {

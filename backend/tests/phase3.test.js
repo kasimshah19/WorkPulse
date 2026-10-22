@@ -33,7 +33,7 @@ describe('Phase 3: Auth, Jobs, Matching & Applications Test Suite', () => {
   }, 30000);
 
   afterAll(async () => {
-    await mongoose.disconnect();
+    // Keep connection alive across shared in-band test execution
   });
 
   beforeEach(async () => {
