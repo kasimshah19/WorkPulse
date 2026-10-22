@@ -126,13 +126,17 @@ export async function handleCheckOut(req, res, next) {
 export async function handleSignoff(req, res, next) {
   try {
     const { id: attendanceId } = req.params;
-    const { decision, reason } = req.body;
+    let { decision, reason, notes } = req.body;
+
+    if (decision === 'APPROVE') decision = 'APPROVED';
+    if (decision === 'REJECT') decision = 'DISPUTED';
+    const finalReason = reason || notes || '';
 
     const updated = await signoff({
       attendanceId,
       contractorId: req.user._id,
       decision,
-      reason,
+      reason: finalReason,
     });
 
     return res.status(200).json(apiResponse.success(updated));

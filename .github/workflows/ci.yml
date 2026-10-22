@@ -1,0 +1,118 @@
+name: WorkPulse CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    name: Backend Tests & Invariant Audit
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --name mongodb
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Initialize MongoDB Replica Set
+        run: |
+          docker exec mongodb mongosh --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })' || true
+          sleep 3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run Route Security & Param Validation Audit
+        working-directory: backend
+        run: npm run audit:routes
+
+      - name: Run Database Index & Query Plan Audit
+        working-directory: backend
+        env:
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
+        run: npm run audit:indexes
+
+      - name: Run Test Suite (Authz, Sessions, Lifecycle, Simulation)
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
+          JWT_SECRET: ci-testing-jwt-secret-key-32chars-min
+        run: npm test
+
+      - name: Run Double-Entry Ledger Reconciliation Audit
+        working-directory: backend
+        env:
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/workpulse_test?directConnection=true
+        run: npm run reconcile
+
+  voice-service:
+    name: Voice Service Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: voice-service/requirements.txt
+
+      - name: Install Python Dependencies
+        working-directory: voice-service
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite
+        working-directory: voice-service
+        run: pytest -v
+
+  frontend:
+    name: Frontend Build & Type Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Next.js Production Bundle
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+        run: npm run build

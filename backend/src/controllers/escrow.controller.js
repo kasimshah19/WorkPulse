@@ -178,6 +178,13 @@ export const getEscrowById = async (req, res) => {
  */
 export const releaseEscrow = async (req, res) => {
   const escrowId = req.params.id;
+  const escrow = await EscrowTransaction.findById(escrowId);
+  if (!escrow) {
+    return sendError(res, 404, 'Escrow transaction not found', 'NOT_FOUND');
+  }
+  if (req.user.role !== 'admin' && escrow.contractor.toString() !== req.user._id.toString()) {
+    return sendError(res, 403, 'You do not own this escrow transaction', 'FORBIDDEN');
+  }
   const result = await approveAndRelease(
     escrowId,
     req.user._id,

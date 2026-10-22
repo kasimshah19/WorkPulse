@@ -76,12 +76,31 @@ router.post(
   asyncHandler(onboardAudio)
 );
 
+import Joi from 'joi';
+import validate from '../middleware/validate.js';
+
+const extractSchema = Joi.object({
+  transcript: Joi.string().required().trim(),
+  sessionId: Joi.string().optional(),
+}).strict();
+
+const confirmSchema = Joi.object({
+  sessionId: Joi.string().optional(),
+  skills: Joi.array().items(Joi.string()).required(),
+  experienceYears: Joi.number().min(0).max(50).optional(),
+}).strict();
+
+const idParamSchema = Joi.object({
+  id: Joi.string().required(),
+}).strict();
+
 // POST /api/v1/voice/extract - Worker only, JSON transcript -> extract (WebSpeech path)
 router.post(
   '/extract',
   auth,
   role('worker'),
   voiceExtractLimiter,
+  validate(extractSchema),
   asyncHandler(extractWebSpeech)
 );
 
@@ -90,6 +109,7 @@ router.post(
   '/confirm',
   auth,
   role('worker'),
+  validate(confirmSchema),
   asyncHandler(confirmSkills)
 );
 
@@ -98,6 +118,7 @@ router.post(
   '/sessions/:id/abandon',
   auth,
   role('worker'),
+  validate(idParamSchema, 'params'),
   asyncHandler(abandonSession)
 );
 

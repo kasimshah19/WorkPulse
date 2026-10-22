@@ -13,14 +13,21 @@ import {
 
 const router = Router();
 
+import Joi from 'joi';
+import validate from '../middleware/validate.js';
+
+const idParamSchema = Joi.object({
+  id: Joi.string().required(),
+}).strict();
+
 router.use(auth);
 
-router.post('/jobs/:id/fund', role('contractor'), asyncHandler(fundJobEscrow));
-router.get('/jobs/:id/funding-quote', role('contractor', 'admin'), asyncHandler(getJobFundingQuote));
-router.get('/jobs/:id', role('contractor', 'admin'), asyncHandler(getJobEscrows));
+router.post('/jobs/:id/fund', role('contractor'), validate(idParamSchema, 'params'), asyncHandler(fundJobEscrow));
+router.get('/jobs/:id/funding-quote', role('contractor', 'admin'), validate(idParamSchema, 'params'), asyncHandler(getJobFundingQuote));
+router.get('/jobs/:id', role('contractor', 'admin'), validate(idParamSchema, 'params'), asyncHandler(getJobEscrows));
 router.get('/my', role('worker', 'contractor', 'admin'), asyncHandler(getMyWorkerEscrows));
 router.get('/me', role('worker', 'contractor', 'admin'), asyncHandler(getMyWorkerEscrows));
-router.post('/:id/release', role('contractor', 'admin'), asyncHandler(releaseEscrow));
-router.get('/:id', asyncHandler(getEscrowById));
+router.post('/:id/release', role('contractor', 'admin'), validate(idParamSchema, 'params'), asyncHandler(releaseEscrow));
+router.get('/:id', validate(idParamSchema, 'params'), asyncHandler(getEscrowById));
 
 export default router;

@@ -66,6 +66,7 @@ const notificationSchema = new mongoose.Schema(
 );
 
 // Indexes
+notificationSchema.index({ user: 1, createdAt: -1 });
 notificationSchema.index({ user: 1, status: 1, createdAt: -1 });
 // Optional 90-day retention cleanup
 notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });

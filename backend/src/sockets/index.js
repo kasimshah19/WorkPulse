@@ -39,7 +39,7 @@ export const getIO = () => {
 };
 
 /**
- * Initialize Socket.io server with JWT authentication and rooms.
+ * Initialize Socket.io server with JWT authentication, token expiry timers, and rooms.
  *
  * @param {import('http').Server} httpServer
  * @param {string} clientUrl
@@ -56,7 +56,7 @@ export const initSocket = (httpServer, clientUrl) => {
 
   ioInstance = io;
 
-  // JWT Handshake Authentication Middleware
+  // JWT Handshake Authentication Middleware with algorithm pinning
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '');
@@ -65,14 +65,19 @@ export const initSocket = (httpServer, clientUrl) => {
         return next(new Error('AUTHENTICATION_ERROR: Token required'));
       }
 
-      const decoded = jwt.verify(token, env.jwtSecret);
-      const user = await User.findById(decoded.id).select('_id role phone name isActive');
+      const decoded = jwt.verify(token, env.jwtSecret, {
+        algorithms: ['HS256'],
+      });
+
+      const userId = decoded.sub || decoded.id;
+      const user = await User.findById(userId).select('_id role phone name isActive');
 
       if (!user || !user.isActive) {
         return next(new Error('AUTHENTICATION_ERROR: Invalid or inactive user'));
       }
 
       socket.user = user;
+      socket.tokenExpiry = decoded.exp ? decoded.exp * 1000 : null;
       next();
     } catch (err) {
       logger.warn(`Socket auth rejected: ${err.message}`);
@@ -87,6 +92,19 @@ export const initSocket = (httpServer, clientUrl) => {
     // Automatically join private user room and role-based room
     socket.join(`user:${user._id.toString()}`);
     socket.join(`role:${user.role}`);
+
+    // Proactive access token expiration handling
+    let expiryTimer = null;
+    if (socket.tokenExpiry) {
+      const msUntilExpiry = socket.tokenExpiry - Date.now();
+      if (msUntilExpiry > 0) {
+        expiryTimer = setTimeout(() => {
+          logger.info(`Socket token expired for user ${user._id}, notifying client auth:expired`);
+          socket.emit('auth:expired', { reason: 'ACCESS_TOKEN_EXPIRED' });
+          socket.disconnect(true);
+        }, msUntilExpiry);
+      }
+    }
 
     // Client Acknowledgement for Job Delivery (Cancels SMS fallback timer)
     socket.on('job:received', ({ jobId }) => {
@@ -127,9 +145,17 @@ export const initSocket = (httpServer, clientUrl) => {
     });
 
     socket.on('disconnect', () => {
+      if (expiryTimer) clearTimeout(expiryTimer);
       logger.info(`Socket disconnected: ${socket.id} (User: ${user._id})`);
     });
   });
 
   return io;
+};
+
+export default {
+  initSocket,
+  getIO,
+  registerFallbackTimer,
+  cancelFallbackTimer,
 };

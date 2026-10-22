@@ -67,24 +67,28 @@ const updateJobSchema = Joi.object({
   requiresSelfie: Joi.boolean().optional(),
 });
 
+const idParamSchema = Joi.object({
+  id: Joi.string().required(),
+}).strict();
+
 // All routes require authentication
 router.use(auth);
 
 // Contractor routes
 router.post('/', role('contractor'), validate(createJobSchema), asyncHandler(createJob));
 router.get('/my', role('contractor'), asyncHandler(getMyJobs));
-router.patch('/:id', role('contractor'), validate(updateJobSchema), asyncHandler(updateJob));
-router.post('/:id/publish', role('contractor'), asyncHandler(publishJob));
-router.post('/:id/cancel', role('contractor'), asyncHandler(cancelJob));
-router.post('/:id/fund', role('contractor'), asyncHandler(fundJobEscrow));
-router.get('/:id/funding-quote', role('contractor', 'admin'), asyncHandler(getJobFundingQuote));
-router.get('/:id/applicants', role('contractor', 'admin'), asyncHandler(getJobApplicants));
-router.get('/:id/incidents', role('contractor', 'admin'), asyncHandler(getJobIncidentsHandler));
+router.patch('/:id', role('contractor'), validate(idParamSchema, 'params'), validate(updateJobSchema), asyncHandler(updateJob));
+router.post('/:id/publish', role('contractor'), validate(idParamSchema, 'params'), asyncHandler(publishJob));
+router.post('/:id/cancel', role('contractor'), validate(idParamSchema, 'params'), asyncHandler(cancelJob));
+router.post('/:id/fund', role('contractor'), validate(idParamSchema, 'params'), asyncHandler(fundJobEscrow));
+router.get('/:id/funding-quote', role('contractor', 'admin'), validate(idParamSchema, 'params'), asyncHandler(getJobFundingQuote));
+router.get('/:id/applicants', role('contractor', 'admin'), validate(idParamSchema, 'params'), asyncHandler(getJobApplicants));
+router.get('/:id/incidents', role('contractor', 'admin'), validate(idParamSchema, 'params'), asyncHandler(getJobIncidentsHandler));
 
 // Worker routes
 router.get('/nearby', role('worker'), asyncHandler(getNearbyJobs));
-router.post('/:id/accept', role('worker'), asyncHandler(acceptJob));
-router.post('/:id/reject', role('worker'), asyncHandler(rejectJob));
+router.post('/:id/accept', role('worker'), validate(idParamSchema, 'params'), asyncHandler(acceptJob));
+router.post('/:id/reject', role('worker'), validate(idParamSchema, 'params'), asyncHandler(rejectJob));
 
 // Mount job attendance sub-router: /jobs/:id/attendance/*
 router.use('/:id/attendance', jobAttendanceRouter);

@@ -15,17 +15,13 @@ import ratingsRoutes from './ratings.routes.js';
 import incidentsRoutes from './incidents.routes.js';
 import voiceRoutes from './voice.routes.js';
 import env from '../config/env.js';
+import { getHealth, getReady } from '../controllers/health.controller.js';
 
 const router = Router();
 
-// GET /api/v1/health - Working health check endpoint
-router.get('/health', (_req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    service: 'workpulse-backend',
-    time: new Date().toISOString(),
-  });
-});
+// Liveness and Readiness probes
+router.get('/health', getHealth);
+router.get('/ready', getReady);
 
 // Mount feature routes
 router.use('/auth', authRoutes);
@@ -43,9 +39,16 @@ router.use('/ratings', ratingsRoutes);
 router.use('/incidents', incidentsRoutes);
 router.use('/voice', voiceRoutes);
 
-// Dev testing routes (disabled in production)
-if (env.nodeEnv !== 'production') {
-  router.use('/dev', devRoutes);
-}
+// Dev testing routes (strictly disabled in production, returns 404)
+router.use('/dev', (req, res, next) => {
+  if (process.env.NODE_ENV === 'production' || env.nodeEnv === 'production') {
+    return res.status(404).json({
+      success: false,
+      data: null,
+      error: { code: 'NOT_FOUND', message: 'Cannot ' + req.method + ' ' + req.originalUrl },
+    });
+  }
+  return devRoutes(req, res, next);
+});
 
 export default router;

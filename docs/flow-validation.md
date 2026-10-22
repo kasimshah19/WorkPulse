@@ -128,9 +128,20 @@ This document validates the completeness and integrity of the WorkPulse system s
 
 ---
 
+## Flow 11: Deterministic Scheduler Time-Travel (Auto-Approval & Expiry)
+
+| Step | Action & User Interaction | Screen / Trigger | API Endpoint | Collections Touched | State Change & Invariant |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 11.1 | Worker checks out at shift completion; Contractor goes offline | Worker Screen | `POST /attendance/check-out` | `attendances`, `escrowtransactions` | `escrowtransactions.status: CHECKED_OUT`. `autoApprovalAt` timestamp set. |
+| 11.2 | Deterministic time advance (+24h) via `src/utils/clock.js` | Automated Suite | Virtual Clock | None | Time advanced without process sleeping. |
+| 11.3 | Scheduled cron scanner executes | Scheduler Cron | `processAutoApprovals()` | `escrowtransactions`, `wallets`, `ledgerentries`, `attendances` | Escrow automatically transitions `CHECKED_OUT` -> `RELEASED`. Double-entry ledger group `AUTO_RELEASE:<id>` transfers funds from `ESCROW_HOLD` to `WORKER_WALLET`. |
+| 11.4 | Unfunded PaymentOrder expiry scanner | Scheduler Cron | `expirePendingOrders()` | `paymentorders` | Orders older than 30 minutes marked `EXPIRED`. Contractor wallet remains intact. |
+
+---
+
 ## 11. Gaps Discovered and Fixed
 
-During the validation of the 10 flows, the following architectural gaps were identified and resolved across the specification:
+During the validation of the 10 flows and Phase 8 hardening, the following architectural gaps were identified and resolved across the specification:
 
 1. **Gap 1: Retaliatory Ratings in Direct Contracting**
    - *Problem*: In traditional platforms, workers hesitate to report delayed pay or safety violations because contractors immediately leave a 1-star retaliatory review.
@@ -152,6 +163,15 @@ During the validation of the 10 flows, the following architectural gaps were ide
    - *Problem*: In Flow 5, a split dispute settlement required distributing the locked escrow between two different recipient wallets (`WORKER_WALLET` and `CONTRACTOR_WALLET`), which could cause double-entry validation errors if not linked.
    - *Fix*: Standardized the multi-legged ledger entry structure with a single shared `groupId` and validated that the sum of debits (85,000 paise from `ESCROW_HOLD`) exactly equals the sum of credits (42,500 to worker + 42,500 to contractor).
 
+6. **Gap 6: Session Hijacking & Stale JWT Exposure (Phase 8)**
+   - *Problem*: Long-lived JWTs could not be revoked on device theft or token interception.
+   - *Fix (Phase 8)*: Introduced 15-minute short-lived access tokens paired with rotating SHA-256 hashed refresh tokens stored in `refreshtokens` collection. Replay of revoked tokens immediately terminates the entire session family.
+
+7. **Gap 7: Production Environment Leakage of Dev Bypasses (Phase 8)**
+   - *Problem*: Accidental deployment of `NODE_ENV=production` with dev OTP or dev routes enabled.
+   - *Fix (Phase 8)*: Enforced startup assertion barriers in `env.js` that kill the process if default secrets, dev logins, or mock OTP flags are active in production.
+
 ---
 
-**All 10 flows pass on paper and in code.**
+**All 11 flows pass on paper and in automated code verifications.**
+

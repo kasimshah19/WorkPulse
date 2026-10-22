@@ -4,7 +4,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { QRCodeSVG } from 'qrcode.react';
+const QRCodeSVG = dynamic(() => import('qrcode.react').then((m) => m.QRCodeSVG), {
+  ssr: false,
+  loading: () => <div className="w-48 h-48 bg-slate-800 animate-pulse rounded-lg flex items-center justify-center text-xs text-slate-400">QR Code लोड हो रहा है...</div>,
+});
 import {
   ArrowLeft,
   Calendar,

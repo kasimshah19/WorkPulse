@@ -17,11 +17,14 @@ import clock from '../utils/clock.js';
  * Worker or Contractor raises a formal dispute on an escrow milestone.
  */
 export const raiseDispute = async (req, res) => {
-  let { escrowTransactionId, reason, description } = req.body;
+  let { escrowTransactionId, escrowId, reason, description } = req.body;
+  const txId = escrowTransactionId || escrowId;
 
-  if (!escrowTransactionId || !reason) {
+  if (!txId || !reason) {
     return sendError(res, 400, 'escrowTransactionId and reason are required.', 'INVALID_INPUT');
   }
+
+  escrowTransactionId = txId;
 
   let reasonCode = reason;
   if (!Object.values(DISPUTE_REASON).includes(reason)) {

@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import api from '../lib/api';
+import { disconnectSocket } from '../lib/socket';
 
 export const useAuthStore = create((set, get) => ({
   user: null,
-  token: null,
+  token: null, // In-memory primary storage
   isAuthenticated: false,
   isLoading: true,
   language: 'hi',
@@ -24,7 +25,13 @@ export const useAuthStore = create((set, get) => ({
     set({ user: updated });
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await api.post('/auth/logout', {}).catch(() => {});
+    } catch (_e) {}
+
+    disconnectSocket();
+
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -38,30 +45,54 @@ export const useAuthStore = create((set, get) => ({
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
 
-    if (!token) {
-      set({ user: null, token: null, isAuthenticated: false, isLoading: false });
-      return;
-    }
-
+    // 1. First attempt: check if we have a valid refresh cookie or existing token
     try {
-      if (savedUser) {
-        set({ user: JSON.parse(savedUser), token, isAuthenticated: true });
-      }
+      const res = await api.post(
+        '/auth/refresh',
+        {},
+        {
+          headers: {
+            'X-Requested-With': 'workpulse',
+          },
+        }
+      );
 
-      // Fetch fresh me
-      const res = await api.get('/auth/me');
-      if (res.data) {
-        localStorage.setItem('user', JSON.stringify(res.data));
-        set({ user: res.data, token, isAuthenticated: true, isLoading: false });
+      const payload = res.data?.data || res.data;
+      const refreshedToken = payload.accessToken || payload.token;
+      const user = payload.user;
+
+      if (refreshedToken && user) {
+        get().setAuth(user, refreshedToken);
+        return;
       }
-    } catch (_err) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+    } catch (_refreshErr) {
+      // Refresh cookie expired or absent, proceed to check local token fallback
     }
+
+    // 2. Fallback: check saved token in localStorage
+    if (savedToken) {
+      try {
+        if (savedUser) {
+          set({ user: JSON.parse(savedUser), token: savedToken, isAuthenticated: true });
+        }
+
+        const meRes = await api.get('/auth/me');
+        if (meRes.data) {
+          get().setAuth(meRes.data, savedToken);
+          return;
+        }
+      } catch (_meErr) {
+        // Token invalid or expired
+      }
+    }
+
+    // No valid session found
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    set({ user: null, token: null, isAuthenticated: false, isLoading: false });
   },
 
   setLanguage: (language) => set({ language }),

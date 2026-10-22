@@ -1,4 +1,4 @@
-# WorkPulse – Database Schema Specification (Phase 6)
+# WorkPulse – Database Schema Specification (Phase 8)
 
 ---
 
@@ -16,13 +16,14 @@
 
 ---
 
-## 1. Entity-Relationship Overview (16 Collections)
+## 1. Entity-Relationship Overview (17 Collections)
 
-The database consists of 16 MongoDB collections created via Mongoose (lowercase plural).
+The database consists of 17 MongoDB collections created via Mongoose (lowercase plural).
 
 ```mermaid
 erDiagram
     users ||--o{ otps : "authenticates"
+    users ||--o{ refreshtokens : "manages sessions"
     users ||--|| wallets : "owns"
     users ||--o{ jobs : "posts (Contractor)"
     users ||--o{ jobapplications : "submits (Worker)"
@@ -58,6 +59,7 @@ erDiagram
 | Collection Name | Primary Purpose | Approx Growth Rate | Retention Policy |
 |---|---|---|---|
 | `users` | User accounts, profiles, skills, UPI ID, and geo-locations | Low (1 doc / registered user) | Permanent |
+| `refreshtokens` | Rotating refresh tokens, family trees, reuse detection, device audit | Medium (1 doc / session, rotates) | TTL: `expiresAt` (30 Days) |
 | `otps` | Short-lived OTP codes for phone verification | Medium (transient) | TTL: 5 minutes auto-delete |
 | `wallets` | Integer paise balance container (`balancePaise`, `lockedPaise`, `version`) | Low (1 doc / user) | Permanent |
 | `jobs` | Job requisition postings and geofence parameters | Medium | Permanent |
@@ -806,6 +808,32 @@ erDiagram
   * `{ user: 1, createdAt: -1 }` (user session history query)
   * `{ status: 1, method: 1 }` (admin precision/recall and voice share aggregations)
   * `{ createdAt: 1 }` with `{ expireAfterSeconds: 90 * 86400 }` (TTL index: auto-deletes 90 days after creation per DPDP Act 2023)
+
+---
+
+### 3.17 `refreshtokens`
+**Purpose**: Stores rotating refresh token metadata, cryptographic SHA-256 hashes, token family lineages, revocation states, and device context for multi-device session management and token reuse theft detection.
+
+| Field Name | Type | Required | Default | Description / Validation Rules |
+|---|---|---|---|---|
+| `_id` | ObjectId | Yes | Auto | Unique MongoDB Identifier |
+| `tokenHash` | String | Yes | - | SHA-256 hash of the random 64-char refresh token (unique index) |
+| `user` | ObjectId | Yes | - | Ref: `User` (The authenticated session owner) |
+| `familyId` | String | Yes | - | UUID grouping all rotated tokens originating from the same login |
+| `sessionId` | String | Yes | - | UUID identifying the specific persistent device session |
+| `expiresAt` | Date | Yes | - | Expiration timestamp (default 30 days from issuance; TTL index) |
+| `revokedAt` | Date | No | `null` | Timestamp when this token was revoked or rotated |
+| `replacedByTokenHash`| String | No | `null` | SHA-256 hash of the child refresh token issued upon rotation |
+| `userAgent` | String | No | `""` | User-Agent string from the client HTTP handshake |
+| `ip` | String | No | `""` | Client IP address at time of token issuance |
+| `createdAt` | Date | Yes | `now` | Issuance timestamp |
+| `lastUsedAt` | Date | Yes | `now` | Last activity timestamp within the concurrency grace window |
+
+* **Indexes**:
+  * `{ tokenHash: 1 }` with `{ unique: true }` (instant token verification)
+  * `{ user: 1, revokedAt: 1 }` (active session listing and bulk revocation)
+  * `{ familyId: 1 }` (token family revocation on reuse detection)
+  * `{ expiresAt: 1 }` with `{ expireAfterSeconds: 0 }` (TTL index: MongoDB automatically purges expired tokens)
 
 ---
 

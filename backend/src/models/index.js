@@ -15,6 +15,7 @@ import AuditLog from './AuditLog.js';
 import PaymentOrder from './PaymentOrder.js';
 import Payout from './Payout.js';
 import VoiceSession from './VoiceSession.js';
+import RefreshToken from './RefreshToken.js';
 
 export {
   User,
@@ -33,6 +34,7 @@ export {
   PaymentOrder,
   Payout,
   VoiceSession,
+  RefreshToken,
 };
 
 export default {
@@ -52,4 +54,6 @@ export default {
   PaymentOrder,
   Payout,
   VoiceSession,
+  RefreshToken,
 };
+

@@ -143,6 +143,8 @@ All REST responses strictly follow the standardized envelope:
   }
   ```
 - **Success Response (200 OK)**:
+  - **Headers**: `Set-Cookie: refreshToken=<token>; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth; Max-Age=604800`
+  - **Response Body**:
   ```json
   {
     "success": true,
@@ -154,7 +156,8 @@ All REST responses strictly follow the standardized envelope:
         "name": "Ramesh Kumar",
         "isNewUser": false
       },
-      "token": "eyJhbGciOi...",
+      "accessToken": "eyJhbGciOi...",
+      "expiresIn": 900,
       "isNewUser": false
     },
     "error": null
@@ -163,18 +166,94 @@ All REST responses strictly follow the standardized envelope:
 - **Errors**: `400 INVALID_OTP`, `400 OTP_EXPIRED`
 
 #### 3. Refresh Access Token
-- **Method & Path**: `POST /auth/refresh-token`
-- **Auth**: Public
-- **Phase**: Phase 5
+- **Method & Path**: `POST /auth/refresh`
+- **Auth**: Public (Requires `httpOnly` `refreshToken` cookie or body `{ refreshToken }`)
+- **Phase**: Phase 8 (Implemented)
+- **Success Response (200 OK)**:
+  - **Headers**: `Set-Cookie: refreshToken=<newRotatedToken>; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth; Max-Age=604800`
+  - **Response Body**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "accessToken": "eyJhbGciOi...",
+      "expiresIn": 900
+    },
+    "error": null
+  }
+  ```
+- **Errors**: `401 TOKEN_MISSING`, `401 TOKEN_EXPIRED`, `401 TOKEN_REVOKED_REUSE_DETECTED`
 
-#### 4. Logout
+#### 4. Logout (Current Session)
 - **Method & Path**: `POST /auth/logout`
-- **Auth**: Authenticated (Any role)
-- **Phase**: Phase 5
+- **Auth**: Public / Authenticated (Clears `refreshToken` cookie and marks session revoked)
+- **Phase**: Phase 8 (Implemented)
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "message": "Logged out successfully"
+    },
+    "error": null
+  }
+  ```
 
-#### 5. Get Current User (`me`)
+#### 5. Logout All Devices
+- **Method & Path**: `POST /auth/logout-all`
+- **Auth**: Authenticated (Bearer Token)
+- **Phase**: Phase 8 (Implemented)
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "revokedCount": 3,
+      "message": "All sessions terminated successfully"
+    },
+    "error": null
+  }
+  ```
+
+#### 6. List Active Sessions
+- **Method & Path**: `GET /auth/sessions`
+- **Auth**: Authenticated (Bearer Token)
+- **Phase**: Phase 8 (Implemented)
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": "670f...1a",
+        "device": "Mozilla/5.0 (Linux; Android 14; Pixel 7)",
+        "ip": "103.21.124.5",
+        "createdAt": "2026-10-22T04:30:00.000Z",
+        "isCurrent": true
+      }
+    ],
+    "error": null
+  }
+  ```
+
+#### 7. Revoke Specific Session
+- **Method & Path**: `DELETE /auth/sessions/:id`
+- **Auth**: Authenticated (Bearer Token)
+- **Phase**: Phase 8 (Implemented)
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "message": "Session revoked"
+    },
+    "error": null
+  }
+  ```
+
+#### 8. Get Current User (`me`)
 - **Method & Path**: `GET /auth/me`
-- **Auth**: Authenticated
+- **Auth**: Authenticated (Bearer Token)
 - **Phase**: Phase 3 (Implemented)
 - **Success Response (200 OK)**:
   ```json
@@ -192,7 +271,7 @@ All REST responses strictly follow the standardized envelope:
   }
   ```
 
-#### 6. Dev Login & Dev Users (Dev Mode Only)
+#### 9. Dev Login & Dev Users (Dev Mode Only)
 - **Method & Path**: `POST /auth/dev-login` & `GET /auth/dev-users`
 - **Auth**: Public (Mounted only when `OTP_DEV_MODE=true` and `NODE_ENV!=production`)
 - **Phase**: Phase 3 (Implemented)

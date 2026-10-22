@@ -50,6 +50,7 @@ const jobApplicationSchema = new mongoose.Schema(
 // Unique compound index so a worker cannot have duplicate applications per job
 jobApplicationSchema.index({ job: 1, worker: 1 }, { unique: true });
 jobApplicationSchema.index({ worker: 1, status: 1 });
+jobApplicationSchema.index({ job: 1, respondedAt: -1 });
 
 const JobApplication = mongoose.model('JobApplication', jobApplicationSchema);
 

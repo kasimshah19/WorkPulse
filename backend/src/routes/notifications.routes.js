@@ -1,10 +1,16 @@
 import { Router } from 'express';
+import Joi from 'joi';
 import asyncHandler from '../utils/asyncHandler.js';
 import auth from '../middleware/auth.js';
+import validate from '../middleware/validate.js';
 import Notification from '../models/Notification.js';
 import { sendSuccess, sendError } from '../utils/apiResponse.js';
 
 const router = Router();
+
+const idParamSchema = Joi.object({
+  id: Joi.string().hex().length(24).required(),
+}).strict();
 
 router.use(auth);
 
@@ -45,6 +51,7 @@ router.get(
  */
 router.patch(
   '/:id/read',
+  validate(idParamSchema, 'params'),
   asyncHandler(async (req, res) => {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },

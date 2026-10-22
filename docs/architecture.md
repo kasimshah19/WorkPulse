@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph DataLayer [Data Persistence & State]
-        MongoDB[("MongoDB 7.0 Cluster<br/>• 13 Normalized Collections<br/>• 2dsphere GeoJSON Indexes<br/>• Immutable Audit & Ledger Collections")]
+        MongoDB[("MongoDB 7.0 Cluster<br/>• 17 Normalized Collections<br/>• 2dsphere GeoJSON Indexes<br/>• Immutable Audit & Ledger Collections<br/>• TTL-indexed refreshtokens Collection")]
     end
 
     subgraph ExternalGateways [External Cloud Services]
@@ -712,3 +712,18 @@ sequenceDiagram
     B->>Adm: Socket sos:resolved
     B-->>W: 200 OK (Resolved)
 ```
+
+---
+
+## 9. Phase 8 Security & Verification Architecture
+
+### 9.1 Session Hardening & Dual-Token Rotation
+In Phase 8, the authentication boundary was upgraded from a static single JWT to a defense-in-depth dual-token architecture:
+- **Access Token (15-Minute Lifespan)**: Handled purely in client memory (`authStore.js`).
+- **Refresh Token (7-Day Sliding Window)**: Stored in a strict `httpOnly`, `sameSite: 'lax'`, `path: '/api/v1/auth'` cookie and persisted as a SHA-256 hash in the `refreshtokens` collection.
+- **Family-Based Reuse Detection**: If an old (already rotated) refresh token is presented, the system detects a token hijacking attack and revokes all active sessions across all devices for that user.
+
+### 9.2 Invariant Verification & Chaos Simulation
+- **Continuous Ledger Reconciliation**: 5 invariant proofs (A through E) mathematically verify global conservation of funds, group zero-sum equality, and contractor locked escrows.
+- **Chaos Engine**: High-concurrency simulations stress parallel operations (funding, disputes, check-ins, withdrawals) with 0 unhandled 5xx exceptions and 0 financial discrepancy (`diff = 0`).
+

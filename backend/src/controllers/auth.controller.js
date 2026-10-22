@@ -1,11 +1,75 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Otp from '../models/Otp.js';
 import Wallet from '../models/Wallet.js';
+import AuditLog from '../models/AuditLog.js';
 import env from '../config/env.js';
 import { sendSuccess, sendError } from '../utils/apiResponse.js';
 import logger from '../utils/logger.js';
+import sessionService from '../services/session.service.js';
+
+// In-memory lockout tracking for failed OTP attempts: phone -> { lockUntil: number, failedAttempts: number }
+const phoneLockouts = new Map();
+
+/**
+ * Check if a phone number is temporarily locked out due to excessive failed attempts
+ */
+export const checkPhoneLockout = (phone) => {
+  const lockout = phoneLockouts.get(phone);
+  if (!lockout) return null;
+
+  if (Date.now() < lockout.lockUntil) {
+    const remainingMinutes = Math.ceil((lockout.lockUntil - Date.now()) / (60 * 1000));
+    return remainingMinutes;
+  }
+
+  // Lockout expired, clean up
+  phoneLockouts.delete(phone);
+  return null;
+};
+
+/**
+ * Record a failed OTP attempt for lockout calculation
+ */
+export const recordFailedOtpAttempt = async (phone) => {
+  let record = phoneLockouts.get(phone) || { failedAttempts: 0, lockUntil: 0 };
+  record.failedAttempts += 1;
+
+  const maxAttempts = env.otpMaxFailedAttempts || 5;
+  const lockoutMin = env.otpLockoutMin || 15;
+
+  if (record.failedAttempts >= maxAttempts) {
+    record.lockUntil = Date.now() + lockoutMin * 60 * 1000;
+    phoneLockouts.set(phone, record);
+
+    logger.warn(`[SECURITY_OTP_LOCKOUT] Phone ${phone} locked for ${lockoutMin} minutes`);
+    try {
+      await AuditLog.create({
+        action: 'SECURITY_OTP_LOCKOUT',
+        actor: null,
+        target: phone,
+        metadata: {
+          failedAttempts: record.failedAttempts,
+          lockoutMinutes: lockoutMin,
+        },
+      });
+    } catch (auditErr) {
+      logger.error('Failed to write audit log for OTP lockout:', auditErr);
+    }
+
+    return lockoutMin;
+  }
+
+  phoneLockouts.set(phone, record);
+  return null;
+};
+
+/**
+ * Clear lockout record on successful verification
+ */
+export const clearPhoneLockout = (phone) => {
+  phoneLockouts.delete(phone);
+};
 
 /**
  * Format phone to E.164 (+91 standard default for Indian numbers)
@@ -26,9 +90,7 @@ export const normalizePhone = (phone) => {
 };
 
 /**
- * Serializes a user object, attaching profileComplete
- * Worker: true if skills.length >= 1 and location coordinates != [0, 0]
- * Contractor: always true
+ * Serializes a user object, attaching profileComplete and omitting sensitive fields
  */
 export const serializeUser = (user) => {
   const isWorker = user.role === 'worker';
@@ -41,6 +103,8 @@ export const serializeUser = (user) => {
   const profileComplete = isWorker ? (hasSkills && hasLocation) : true;
   const userObj = user.toObject ? user.toObject() : { ...user };
   delete userObj.__v;
+  delete userObj.otpHash;
+  delete userObj.password;
 
   const hasEmergencyContact = Boolean(user.emergencyContact?.phone);
 
@@ -63,6 +127,17 @@ export const sendOtp = async (req, res) => {
     return sendError(res, 400, 'Please provide a valid E.164 phone number', 'VALIDATION_ERROR');
   }
 
+  // Check lockout
+  const remainingLockoutMin = checkPhoneLockout(normalizedPhone);
+  if (remainingLockoutMin) {
+    return sendError(
+      res,
+      429,
+      `Account locked due to multiple failed attempts. Try again in ${remainingLockoutMin} minute(s).`,
+      'RATE_LIMITED'
+    );
+  }
+
   // Rate limit: max 3 OTPs per phone per 10 minutes
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
   const recentOtpCount = await Otp.countDocuments({
@@ -75,7 +150,7 @@ export const sendOtp = async (req, res) => {
       res,
       429,
       'Maximum 3 OTP requests allowed per 10 minutes. Please wait.',
-      'RATE_LIMIT_EXCEEDED'
+      'RATE_LIMITED'
     );
   }
 
@@ -114,6 +189,16 @@ export const verifyOtp = async (req, res) => {
   const { phone, otp, name, role } = req.body;
   const normalizedPhone = normalizePhone(phone);
 
+  const remainingLockoutMin = checkPhoneLockout(normalizedPhone);
+  if (remainingLockoutMin) {
+    return sendError(
+      res,
+      429,
+      `Account temporarily locked due to excessive failed attempts. Please retry in ${remainingLockoutMin} minute(s).`,
+      'RATE_LIMITED'
+    );
+  }
+
   const otpDoc = await Otp.findOne({
     phone: normalizedPhone,
     isUsed: false,
@@ -121,10 +206,12 @@ export const verifyOtp = async (req, res) => {
   }).sort({ createdAt: -1 });
 
   if (!otpDoc) {
+    await recordFailedOtpAttempt(normalizedPhone);
     return sendError(res, 400, 'OTP is invalid or has expired', 'INVALID_OTP');
   }
 
   if (otpDoc.attempts >= 5) {
+    await recordFailedOtpAttempt(normalizedPhone);
     return sendError(res, 400, 'Maximum OTP attempts exceeded. Request a new OTP.', 'OTP_MAX_ATTEMPTS');
   }
 
@@ -132,9 +219,20 @@ export const verifyOtp = async (req, res) => {
   if (!isMatch) {
     otpDoc.attempts += 1;
     await otpDoc.save();
+    const lockedMin = await recordFailedOtpAttempt(normalizedPhone);
+    if (lockedMin) {
+      return sendError(
+        res,
+        429,
+        `Too many failed attempts. Account locked for ${lockedMin} minutes.`,
+        'RATE_LIMITED'
+      );
+    }
     return sendError(res, 400, 'Invalid OTP entered', 'INVALID_OTP');
   }
 
+  // OTP verified successfully: clear failure counter
+  clearPhoneLockout(normalizedPhone);
   otpDoc.isUsed = true;
   await otpDoc.save();
 
@@ -177,17 +275,81 @@ export const verifyOtp = async (req, res) => {
     isNewUser = true;
   }
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role, phone: user.phone },
-    env.jwtSecret,
-    { expiresIn: env.jwtExpiresIn }
-  );
+  // Issue Access Token & Rotating Refresh Token
+  const session = await sessionService.createSession(user, req, res);
 
   return sendSuccess(res, 200, {
-    token,
+    token: session.accessToken,
+    accessToken: session.accessToken,
     user: serializeUser(user),
+    sessionId: session.sessionId,
     isNewUser,
   });
+};
+
+/**
+ * POST /api/v1/auth/refresh
+ * Rotates the refresh token (retrieved from httpOnly cookie) and returns a new access token
+ */
+export const refreshSession = async (req, res) => {
+  const rawToken = req.cookies?.workpulse_refresh || req.body?.refreshToken;
+
+  if (!rawToken) {
+    return sendError(res, 401, 'Refresh token cookie required', 'UNAUTHORIZED');
+  }
+
+  const result = await sessionService.rotateRefreshToken(rawToken, req, res);
+
+  if (!result.success) {
+    return sendError(res, result.status || 401, result.message, result.code || 'UNAUTHORIZED');
+  }
+
+  return sendSuccess(res, 200, {
+    accessToken: result.accessToken,
+    token: result.accessToken,
+    user: serializeUser(result.user),
+  });
+};
+
+/**
+ * POST /api/v1/auth/logout
+ * Revokes current token family and clears httpOnly cookie
+ */
+export const logoutUser = async (req, res) => {
+  const rawToken = req.cookies?.workpulse_refresh;
+  await sessionService.logout(rawToken, res);
+  return sendSuccess(res, 200, { message: 'Logged out successfully' });
+};
+
+/**
+ * POST /api/v1/auth/logout-all
+ * Revokes all sessions for authenticated user
+ */
+export const logoutAllUser = async (req, res) => {
+  await sessionService.logoutAll(req.user._id, res);
+  return sendSuccess(res, 200, { message: 'All active sessions terminated' });
+};
+
+/**
+ * GET /api/v1/auth/sessions
+ * List active sessions for authenticated user
+ */
+export const getSessions = async (req, res) => {
+  const sessions = await sessionService.listUserSessions(req.user._id, req.sessionId);
+  return sendSuccess(res, 200, sessions);
+};
+
+/**
+ * DELETE /api/v1/auth/sessions/:id
+ * Revoke specific session by sessionId
+ */
+export const deleteSession = async (req, res) => {
+  const { id } = req.params;
+  const revoked = await sessionService.revokeUserSession(req.user._id, id);
+  if (!revoked) {
+    return sendError(res, 404, 'Session not found or already inactive', 'NOT_FOUND');
+  }
+  return sendSuccess(res, 200, { message: 'Session revoked successfully' });
 };
 
 /**
@@ -202,11 +364,11 @@ export const getMe = async (req, res) => {
 };
 
 /**
- * POST /api/v1/auth/dev-login (Only in dev mode)
+ * POST /api/v1/auth/dev-login (Only in non-production with otpDevMode)
  */
 export const devLogin = async (req, res) => {
-  if (!env.otpDevMode) {
-    return sendError(res, 404, 'Dev login is not available', 'NOT_FOUND');
+  if (env.nodeEnv === 'production' || !env.otpDevMode) {
+    return sendError(res, 404, 'Dev login is disabled in production', 'NOT_FOUND');
   }
 
   const { phone } = req.body;
@@ -217,24 +379,27 @@ export const devLogin = async (req, res) => {
     return sendError(res, 404, `User with phone ${normalizedPhone} not found in database`, 'USER_NOT_FOUND');
   }
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role, phone: user.phone },
-    env.jwtSecret,
-    { expiresIn: env.jwtExpiresIn }
-  );
+  if (!user.isActive) {
+    return sendError(res, 401, 'User account is deactivated', 'USER_DEACTIVATED');
+  }
+
+  // Dev login also creates a real session with rotating refresh token
+  const session = await sessionService.createSession(user, req, res);
 
   return sendSuccess(res, 200, {
-    token,
+    token: session.accessToken,
+    accessToken: session.accessToken,
     user: serializeUser(user),
+    sessionId: session.sessionId,
   });
 };
 
 /**
- * GET /api/v1/auth/dev-users (Only in dev mode)
+ * GET /api/v1/auth/dev-users (Only in non-production with otpDevMode)
  */
 export const getDevUsers = async (req, res) => {
-  if (!env.otpDevMode) {
-    return sendError(res, 404, 'Dev users list is not available', 'NOT_FOUND');
+  if (env.nodeEnv === 'production' || !env.otpDevMode) {
+    return sendError(res, 404, 'Dev users list is disabled in production', 'NOT_FOUND');
   }
 
   const users = await User.find({})
@@ -243,4 +408,22 @@ export const getDevUsers = async (req, res) => {
     .lean();
 
   return sendSuccess(res, 200, users);
+};
+
+export default {
+  sendOtp,
+  verifyOtp,
+  refreshSession,
+  logoutUser,
+  logoutAllUser,
+  getSessions,
+  deleteSession,
+  getMe,
+  devLogin,
+  getDevUsers,
+  serializeUser,
+  normalizePhone,
+  checkPhoneLockout,
+  recordFailedOtpAttempt,
+  clearPhoneLockout,
 };

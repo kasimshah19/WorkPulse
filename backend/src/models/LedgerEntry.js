@@ -79,6 +79,8 @@ const ledgerEntrySchema = new mongoose.Schema({
 
 // Unique compound index: (groupId, entryIndex)
 ledgerEntrySchema.index({ groupId: 1, entryIndex: 1 }, { unique: true });
+// Index for wallet statement query
+ledgerEntrySchema.index({ wallet: 1, createdAt: -1 });
 
 // Guard: Disallow updates and deletions to enforce append-only invariant
 ledgerEntrySchema.pre('save', function (next) {

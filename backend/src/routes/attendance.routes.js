@@ -27,8 +27,27 @@ router.get('/history', role('worker'), getMyAttendanceHistory);
 router.get('/:id/selfie', getAttendanceSelfie);
 router.get('/:id', getAttendanceById);
 
+import Joi from 'joi';
+import validate from '../middleware/validate.js';
+
+const signoffSchema = Joi.object({
+  decision: Joi.string().valid('APPROVED', 'DISPUTED', 'APPROVE', 'REJECT').required(),
+  notes: Joi.string().max(500).optional().allow(''),
+  reason: Joi.string().max(500).optional().allow(''),
+}).strict();
+
+const idParamSchema = Joi.object({
+  id: Joi.string().required(),
+}).strict();
+
 // Contractor Sign-off Decision
-router.post('/:id/signoff', role('contractor', 'admin'), handleSignoff);
+router.post(
+  '/:id/signoff',
+  role('contractor', 'admin'),
+  validate(idParamSchema, 'params'),
+  validate(signoffSchema),
+  handleSignoff
+);
 
 export default router;
 

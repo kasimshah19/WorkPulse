@@ -1,10 +1,12 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
   timeout: 20000,
 });
 
@@ -62,17 +64,33 @@ export const ERROR_MESSAGES = {
   INCIDENT_CLOSED: 'यह इंसिडेंट पहले ही सुलझाया (resolve) जा चुका है।',
   NOT_ALERTED_USER: 'आपको इस आपातकालीन अलर्ट की अनुमति नहीं है।',
   UNAUTHORIZED: 'लॉगिन सत्र समाप्त हो गया। कृपया दोबारा लॉगिन करें।',
+  TOKEN_EXPIRED: 'लॉगिन सत्र समाप्त हो गया। टोकन रीफ़्रेश किया जा रहा है...',
   FORBIDDEN: 'आपको इस कार्रवाई की अनुमति नहीं है।',
   NOT_FOUND: 'रिकॉर्ड नहीं मिला।',
 };
 
+// Concurrency queue for in-flight token refresh
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Request interceptor to attach JWT and handle multipart/form-data
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const inMemoryToken = useAuthStore.getState()?.token;
+  const token = inMemoryToken || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
 
   // Allow browser to calculate multipart boundary automatically when sending FormData
@@ -83,7 +101,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor to unwrap envelope and enrich friendly error messages
+// Response interceptor to unwrap envelope, perform seamless token refresh, and enrich errors
 api.interceptors.response.use(
   (response) => {
     if (response.data && response.data.success !== undefined) {
@@ -91,7 +109,71 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Handle 401 Unauthorized / Token Expired with single in-flight refresh
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/auth/verify-otp') &&
+      !originalRequest.url?.includes('/auth/send-otp') &&
+      !originalRequest.url?.includes('/auth/dev-login')
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      return new Promise((resolve, reject) => {
+        axios
+          .post(
+            `${api.defaults.baseURL}/auth/refresh`,
+            {},
+            {
+              withCredentials: true,
+              headers: {
+                'X-Requested-With': 'workpulse',
+              },
+            }
+          )
+          .then(({ data }) => {
+            const payload = data?.data || data;
+            const newToken = payload.accessToken || payload.token;
+            const newUser = payload.user;
+
+            if (newToken) {
+              useAuthStore.getState().setAuth(newUser || useAuthStore.getState().user, newToken);
+              api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              processQueue(null, newToken);
+              resolve(api(originalRequest));
+            } else {
+              throw new Error('No access token in refresh response');
+            }
+          })
+          .catch((refreshErr) => {
+            processQueue(refreshErr, null);
+            useAuthStore.getState().logout();
+            reject(refreshErr);
+          })
+          .finally(() => {
+            isRefreshing = false;
+          });
+      });
+    }
+
     const errData = error.response?.data?.error;
     const code = errData?.code || 'ERROR';
     const details = errData?.details || null;

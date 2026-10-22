@@ -118,6 +118,8 @@ escrowTransactionSchema.index({ job: 1, worker: 1, dayDate: 1 }, { unique: true 
 escrowTransactionSchema.index({ status: 1, autoApprovalAt: 1 });
 escrowTransactionSchema.index({ contractor: 1, status: 1 });
 escrowTransactionSchema.index({ worker: 1, status: 1 });
+escrowTransactionSchema.index({ worker: 1, dayDate: -1 });
+escrowTransactionSchema.index({ contractor: 1, dayDate: -1 });
 
 const EscrowTransaction = mongoose.model(
   'EscrowTransaction',

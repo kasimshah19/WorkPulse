@@ -166,6 +166,7 @@ describe('Phase 7: Reputation & Safety Integration Tests', () => {
       Rating.deleteMany({}),
       Incident.deleteMany({}),
       Notification.deleteMany({}),
+      EscrowTransaction.deleteMany({ idempotencyKey: { $regex: /^test-escrow/ } }),
     ]);
   });
 

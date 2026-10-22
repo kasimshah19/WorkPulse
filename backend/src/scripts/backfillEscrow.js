@@ -5,6 +5,11 @@ import JobApplication from '../models/JobApplication.js';
 import { createEscrowForAssignment } from '../services/escrow.service.js';
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Cannot run backfill script in production!');
+    process.exit(1);
+  }
+
   console.log('🔄 Starting Escrow Backfill for ASSIGNED workers...\n');
   await connectDB();
 
